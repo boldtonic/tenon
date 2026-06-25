@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { DEFAULT_FURNITURE_CONFIG } from '~~/shared/domain/defaults'
 import type { FurnitureColumn, FurnitureConfig, FurnitureModule } from '~~/shared/domain/types'
+import { moduleTypeText } from '~~/shared/i18n/ui-copy'
 
 interface Props {
   columns: FurnitureColumn[]
@@ -15,7 +16,6 @@ const props = withDefaults(defineProps<Props>(), {
 
 const PX_PER_M = 80
 const OUTER_PADDING = 3
-const MODULE_GAP = 3
 const RAIL_SIZE = 2
 
 const furnitureConfig = computed<FurnitureConfig>(() => props.furnitureConfig ?? props.config ?? DEFAULT_FURNITURE_CONFIG)
@@ -34,12 +34,35 @@ function columnTotalHeight(column: FurnitureColumn): number {
 }
 
 function columnRenderedHeight(column: FurnitureColumn): number {
-  const moduleCount = column.modules.length
   const moduleHeight = pxValue(columnTotalHeight(column))
-  const spacerHeight = moduleCount > 0 ? RAIL_SIZE * (moduleCount + 1) : 0
-  const gapHeight = moduleCount > 0 ? moduleCount * 2 * MODULE_GAP : 0
-  const height = moduleHeight + spacerHeight + gapHeight
+  const height = moduleHeight > 0 ? moduleHeight + RAIL_SIZE : 0
   return height > 0 ? height + OUTER_PADDING * 2 : 0
+}
+
+function columnStackHeight(column: FurnitureColumn): string {
+  const moduleHeight = pxValue(columnTotalHeight(column))
+  return `${moduleHeight > 0 ? moduleHeight + RAIL_SIZE : 0}px`
+}
+
+function moduleBoundaryHeight(column: FurnitureColumn, boundaryIndex: number): number {
+  let height = 0
+  const count = Math.min(Math.max(0, boundaryIndex), column.modules.length)
+  for (let i = 0; i < count; i++) height += column.modules[i]?.height ?? 0
+  return height
+}
+
+function moduleStackStyle(column: FurnitureColumn, moduleIndex: number, module: FurnitureModule): Record<string, string> {
+  return {
+    height: px(module.height),
+    bottom: `${RAIL_SIZE / 2 + pxValue(moduleBoundaryHeight(column, moduleIndex))}px`,
+  }
+}
+
+function railStyle(column: FurnitureColumn, boundaryIndex: number): Record<string, string> {
+  return {
+    height: `${RAIL_SIZE}px`,
+    bottom: `${pxValue(moduleBoundaryHeight(column, boundaryIndex))}px`,
+  }
 }
 
 const previewHeight = computed<string>(() => {
@@ -165,12 +188,12 @@ function moduleClass(mod: FurnitureModule): string {
             :style="{ padding: `${OUTER_PADDING}px` }"
           >
             <div
-              class="flex flex-col-reverse items-stretch"
-              :style="{ gap: `${MODULE_GAP}px` }"
+              class="relative w-full shrink-0"
+              :style="{ height: columnStackHeight(col) }"
             >
               <span
-                class="block w-full shrink-0 bg-primary"
-                :style="{ height: `${RAIL_SIZE}px` }"
+                class="absolute inset-x-0 z-10 block bg-primary"
+                :style="railStyle(col, 0)"
                 aria-hidden="true"
               />
 
@@ -179,9 +202,9 @@ function moduleClass(mod: FurnitureModule): string {
                 :key="mod.id ?? mi"
               >
                 <div
-                  :class="['relative block w-full shrink-0', moduleClass(mod)]"
-                  :style="{ height: px(mod.height) }"
-                  :aria-label="`${mod.type} preview`"
+                  :class="['absolute inset-x-0 z-0 block', moduleClass(mod)]"
+                  :style="moduleStackStyle(col, mi, mod)"
+                  :aria-label="moduleTypeText(mod.type)"
                 >
                   <template v-if="mod.type === 'drawer'">
                     <div
@@ -235,8 +258,8 @@ function moduleClass(mod: FurnitureModule): string {
                 </div>
 
                 <span
-                  class="block w-full shrink-0 bg-primary"
-                  :style="{ height: `${RAIL_SIZE}px` }"
+                  class="absolute inset-x-0 z-10 block bg-primary"
+                  :style="railStyle(col, mi + 1)"
                   aria-hidden="true"
                 />
               </template>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { CameraState, CloudProjectRecord, LocalProjectRow, PublicStyle, ViewMode } from '~~/shared/domain/types'
 import { DEFAULT_CAMERA_STATE, normalizePublicStyle } from '~~/shared/domain/defaults'
+import { uiText as t } from '~~/shared/i18n/ui-copy'
 import { exportDoc } from '~~/shared/yjs/morti-format'
 
 definePageMeta({ layout: false })
@@ -528,7 +529,7 @@ async function exportModel(format: 'glb' | 'gltf') {
 }
 
 const deleteDialogMessage = computed<string>(() => {
-  const base = `“${project.value?.name ?? 'this project'}” will be removed from this device. This cannot be undone.`
+  const base = t('deleteProjectMessage', { name: project.value?.name ?? t('deleteProjectFallbackName') })
   return deleteError.value ? `${base}\n\n${deleteError.value}` : base
 })
 
@@ -546,7 +547,7 @@ async function confirmDelete() {
       await softDeleteCloudProjectForClientId(projectId)
     }
     catch (err: unknown) {
-      deleteError.value = (err as { message?: string } | null)?.message ?? 'Could not remove the cloud copy. Try again or check your connection.'
+      deleteError.value = (err as { message?: string } | null)?.message ?? t('cloudCopyDeleteError')
       return
     }
   }
@@ -566,7 +567,7 @@ async function toggleDemo() {
     cloudRecord.value = await updateCloudProjectDemoFlag(rec.id, !isDemo.value)
   }
   catch (err: unknown) {
-    demoToggleError.value = (err as { message?: string } | null)?.message ?? 'Could not update demo status. Check your admin permissions.'
+    demoToggleError.value = (err as { message?: string } | null)?.message ?? t('demoStatusError')
   }
 }
 
@@ -587,44 +588,44 @@ function showCutlistWipAlert() {
 }
 
 const projectMenuItems = computed(() => [
-  { label: 'Change name', icon: 'i-lucide-text-cursor-input', onSelect: openRename },
+  { label: t('changeName'), icon: 'i-lucide-text-cursor-input', onSelect: openRename },
   {
-    label: 'Export',
+    label: t('export'),
     icon: 'i-lucide-download',
     disabled: !docRef.value,
     children: [
       {
-        label: 'Project (.morti)',
+        label: t('exportProject'),
         icon: 'i-lucide-file-archive',
         onSelect: () => { void exportProject() },
       },
       {
-        label: '3D model (.glb)',
+        label: t('exportGlb'),
         icon: 'i-lucide-box',
         disabled: exportingModel.value,
         onSelect: () => { void exportModel('glb') },
       },
       {
-        label: '3D model (.gltf)',
+        label: t('exportGltf'),
         icon: 'i-lucide-file-code-2',
         disabled: exportingModel.value,
         onSelect: () => { void exportModel('gltf') },
       },
     ],
   },
-  { label: 'Duplicate', icon: 'i-lucide-copy-plus', disabled: !docRef.value, onSelect: () => { void duplicateProject() } },
+  { label: t('duplicate'), icon: 'i-lucide-copy-plus', disabled: !docRef.value, onSelect: () => { void duplicateProject() } },
   ...(isAdmin.value
     ? [
         { type: 'separator' as const },
         {
-          label: isDemo.value ? 'Remove from demos' : 'Set as demo',
+          label: isDemo.value ? t('removeFromDemos') : t('setAsDemo'),
           icon: isDemo.value ? 'i-lucide-circle-minus' : 'i-lucide-sparkles',
           onSelect: () => { void toggleDemo() },
         },
       ]
     : []),
   { type: 'separator' as const },
-  { label: 'Delete', icon: 'i-lucide-trash-2', color: 'error' as const, onSelect: openDelete },
+  { label: t('delete'), icon: 'i-lucide-trash-2', color: 'error' as const, onSelect: openDelete },
 ])
 
 const topChromeMaxWidth = computed(() => {
@@ -648,7 +649,7 @@ const canvasChromeTeleportSelector = computed(() =>
         class="fixed inset-0 z-[9999] flex h-[100dvh] w-screen cursor-pointer items-center justify-center overflow-hidden px-6 py-6 sm:px-8 sm:py-8"
         role="button"
         tabindex="0"
-        aria-label="Dismiss cutlist work-in-progress warning"
+        :aria-label="t('cutlistWarningDismiss')"
         @click="confirmCutlistWipAlert"
         @keydown.enter.prevent="confirmCutlistWipAlert"
         @keydown.space.prevent="confirmCutlistWipAlert"
@@ -660,14 +661,14 @@ const canvasChromeTeleportSelector = computed(() =>
           draggable="false"
         >
         <p class="pointer-events-none absolute left-1/2 top-[calc(50%+((100dvh-4rem)*0.13))] w-[calc((100dvh-3rem)*0.6)] -translate-x-1/2 -translate-y-1/2 text-balance text-center font-black leading-tight text-black [font-size:calc((100dvh-4rem)*0.021)]">
-          This part of the app is still a work in progress and has not been tested in real-world builds. Cutlists, measurements, and operations may (and will) contain errors. You are responsible for verifying everything before manufacturing or assembly. Use at your own risk. If you end up building something, I’d love to see it (dms open on x)
+          {{ t('cutlistWarningText') }}
         </p>
       </div>
       <button
         v-else-if="project && viewMode === 'cutlist'"
         type="button"
         class="fixed bottom-3 left-3 z-50 size-14 transition-transform hover:scale-105 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:bottom-4 sm:left-4 sm:size-16"
-        aria-label="Show cutlist work-in-progress warning"
+        :aria-label="t('cutlistWarningShow')"
         @click="showCutlistWipAlert"
       >
         <img
@@ -789,11 +790,11 @@ const canvasChromeTeleportSelector = computed(() =>
             class="flex h-full flex-col items-center justify-center gap-4 px-4"
           >
             <p class="text-pretty text-center text-muted">
-              Project not found.
+              {{ t('projectNotFound') }}
             </p>
             <UButton
               to="/"
-              label="Back to projects"
+              :label="t('backToProjects')"
               class="transition-transform active:scale-[0.97]"
             />
             </div>
@@ -814,7 +815,7 @@ const canvasChromeTeleportSelector = computed(() =>
             icon="i-lucide-arrow-left"
             size="sm"
             class="shrink-0 text-muted opacity-55 transition-[opacity,color,transform] hover:bg-transparent hover:text-highlighted hover:opacity-100 active:scale-[0.97]"
-            aria-label="Home"
+            :aria-label="t('home')"
           />
           <div class="project-title-row flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
             <h1 class="project-title block min-w-0 truncate whitespace-nowrap text-sm font-semibold text-highlighted sm:text-base">
@@ -827,24 +828,24 @@ const canvasChromeTeleportSelector = computed(() =>
               <button
                 type="button"
                 class="public-badge group inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full bg-elevated px-2 text-[11px] font-medium leading-none text-toned ring-1 ring-default/40 transition-[color,background-color,transform] hover:bg-accented hover:text-highlighted active:scale-[0.97]"
-                aria-label="This project is the public copy. Click for options."
+                :aria-label="t('publicCopyAria')"
               >
                 <span
                   class="size-1.5 rounded-full bg-warning transition-transform group-hover:scale-110"
                   aria-hidden="true"
                 />
-                <span class="public-badge-label">Public</span>
+                <span class="public-badge-label">{{ t('public') }}</span>
               </button>
               <template #content>
                 <div class="flex max-w-xs flex-col gap-3 p-3">
                   <p class="text-pretty text-sm text-default">
-                    You're editing the <span class="font-medium text-highlighted">public copy</span>. Changes here are visible to everyone.
+                    {{ t('publicCopyNotice') }}
                   </p>
                   <UButton
                     size="sm"
                     color="primary"
                     variant="soft"
-                    label="Make a local copy"
+                    :label="t('makeLocalCopy')"
                     icon="i-lucide-copy-plus"
                     block
                     class="transition-transform active:scale-[0.97]"
@@ -864,7 +865,7 @@ const canvasChromeTeleportSelector = computed(() =>
                 color="neutral"
                 size="sm"
                 class="shrink-0 text-muted opacity-55 transition-[opacity,color,transform] hover:bg-transparent hover:text-highlighted hover:opacity-100 active:scale-[0.97]"
-                aria-label="Project menu"
+                :aria-label="t('projectMenu')"
               />
             </UDropdownMenu>
           </div>
@@ -892,7 +893,7 @@ const canvasChromeTeleportSelector = computed(() =>
             size="xs"
             :variant="viewMode === 'assembly' ? 'solid' : 'ghost'"
             color="neutral"
-            label="Design"
+            :label="t('design')"
             class="h-8 rounded-full transition-transform active:scale-[0.97]"
             @click="viewMode = 'assembly'"
           />
@@ -900,7 +901,7 @@ const canvasChromeTeleportSelector = computed(() =>
             size="xs"
             :variant="viewMode === 'cutlist' ? 'solid' : 'ghost'"
             color="neutral"
-            label="Cutlist"
+            :label="t('cutlist')"
             class="h-8 rounded-full transition-transform active:scale-[0.97]"
             @click="viewMode = 'cutlist'"
           />
@@ -909,7 +910,7 @@ const canvasChromeTeleportSelector = computed(() =>
             size="xs"
             :variant="viewMode === 'style' ? 'solid' : 'ghost'"
             color="neutral"
-            label="Style"
+            :label="t('style')"
             class="h-8 rounded-full transition-transform active:scale-[0.97]"
             @click="viewMode = 'style'"
           />
@@ -967,7 +968,7 @@ const canvasChromeTeleportSelector = computed(() =>
             color="neutral"
             icon="i-lucide-arrow-left"
             size="sm"
-            label="Back to projects"
+            :label="t('backToProjects')"
             class="transition-transform active:scale-[0.97]"
           />
         </div>
@@ -977,18 +978,18 @@ const canvasChromeTeleportSelector = computed(() =>
       <LazyAppFormDialog
         v-if="project && renameOpen"
         v-model:open="renameOpen"
-        title="Change name"
-        primary-label="Save"
+        :title="t('changeName')"
+        :primary-label="t('save')"
         @primary="confirmRename"
       >
         <UFormField
-          label="Name"
+          :label="t('name')"
           class="w-full"
         >
           <UInput
             v-model="renameValue"
             class="w-full"
-            placeholder="Project name"
+            :placeholder="t('projectName')"
             autofocus
             @keydown.enter.prevent="confirmRename"
           />
@@ -998,10 +999,10 @@ const canvasChromeTeleportSelector = computed(() =>
       <LazyAppConfirmDialog
         v-if="project && deleteOpen"
         v-model:open="deleteOpen"
-        title="Delete project?"
+        :title="t('deleteProjectTitle')"
         :message="deleteDialogMessage"
-        cancel-label="Cancel"
-        confirm-label="Delete"
+        :cancel-label="t('cancel')"
+        :confirm-label="t('delete')"
         @confirm="confirmDelete"
       />
   </div>

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { uiText as t } from '~~/shared/i18n/ui-copy'
+
 interface Props {
   splitRatio?: number
   dividerLocked?: boolean
@@ -138,7 +140,7 @@ const previewStyle = computed(() => {
     >
       <slot>
         <div class="pane-placeholder">
-          <span class="pane-label">Inputs</span>
+          <span class="pane-label">{{ t('details') }}</span>
         </div>
       </slot>
     </div>
@@ -161,7 +163,7 @@ const previewStyle = computed(() => {
     >
       <slot name="preview">
         <div class="pane-placeholder">
-          <span class="pane-label">Preview</span>
+          <span class="pane-label">{{ t('previewSummary') }}</span>
         </div>
       </slot>
     </div>

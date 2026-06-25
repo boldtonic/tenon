@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { FurnitureColumn, FurnitureConfig, FurnitureModule } from '~~/shared/domain/types'
+import { moduleTypeText, uiText as t } from '~~/shared/i18n/ui-copy'
 
 interface Props {
   columns: FurnitureColumn[]
@@ -14,6 +15,8 @@ const emit = defineEmits<{
   (e: 'add-column-left'): void
   (e: 'add-column-right'): void
   (e: 'clear-module-selection'): void
+  (e: 'open-project-details'): void
+  (e: 'set-config-value', key: ProjectDetailKey, value: number): void
   (e: 'remove-column', columnIndex: number): void
   (e: 'add-module-top', columnIndex: number): void
   (e: 'update:zoom-percent', value: number): void
@@ -36,6 +39,13 @@ const ALLOWED_ZOOMS = [100, 75, 50, 25] as const
 const OUTER_RAIL_GAP = 12 // gap-3 between side add buttons and the rail
 const VIEWPORT_INLINE_PADDING = 32 // p-4 on the scroll content
 const MIN_FIT_PX_PER_METER = 64
+type ProjectDetailKey = 'depth' | 'panelThickness' | 'sidePanelOverhang'
+interface ProjectDetailItem {
+  key: ProjectDetailKey
+  label: string
+  compactLabel: string
+  allowZero?: boolean
+}
 
 const clampedZoom = computed<number>(() => {
   const z = props.zoomPercent
@@ -109,8 +119,38 @@ function px(m: number): string {
   return `${meterToPx(m)}px`
 }
 
-function formatMeasurement(n: number): string {
-  return Number.isFinite(n) ? String(n) : ''
+function formatCentimeters(meters: number): string {
+  if (!Number.isFinite(meters)) return ''
+  const centimeters = Math.round(meters * 1000) / 10
+  return String(centimeters)
+}
+
+const projectDetailItems: ProjectDetailItem[] = [
+  { key: 'depth', label: t('depth'), compactLabel: t('depth') },
+  { key: 'panelThickness', label: t('thickness'), compactLabel: t('thicknessCompact') },
+  { key: 'sidePanelOverhang', label: t('overhang'), compactLabel: t('overhangCompact'), allowZero: true },
+]
+
+function projectDetailValue(item: ProjectDetailItem): string {
+  return formatCentimeters(props.config[item.key])
+}
+
+function parseCentimeters(value: string): number | null {
+  const next = Number(value.trim().replace(',', '.'))
+  return Number.isFinite(next) && next >= 0 ? next : null
+}
+
+function commitProjectDetail(item: ProjectDetailItem, event: Event) {
+  const input = event.target as HTMLInputElement | null
+  if (!input) return
+  const centimeters = parseCentimeters(input.value)
+  if (centimeters == null || (!item.allowZero && centimeters <= 0)) {
+    input.value = projectDetailValue(item)
+    return
+  }
+  const meters = centimeters / 100
+  emit('set-config-value', item.key, meters)
+  input.value = formatCentimeters(meters)
 }
 
 function pullHoleEdgeInset(): number {
@@ -323,12 +363,48 @@ function columnTotalHeight(col: FurnitureColumn): number {
 }
 
 function columnRenderedHeight(col: FurnitureColumn): number {
-  const moduleCount = col.modules.length
   const moduleHeight = meterToPx(columnTotalHeight(col))
-  const spacerHeight = moduleCount > 0 ? We + moduleCount * zt : 0
-  const gapHeight = moduleCount > 0 ? moduleCount * 2 * Ke : 0
-  const height = moduleHeight + spacerHeight + gapHeight
+  const height = moduleHeight > 0 ? moduleHeight + zt : 0
   return height > 0 ? height + qt * 2 : 0
+}
+
+function columnStackHeight(col: FurnitureColumn): string {
+  const moduleHeight = meterToPx(columnTotalHeight(col))
+  return `${moduleHeight > 0 ? moduleHeight + zt : 0}px`
+}
+
+function moduleBoundaryHeight(col: FurnitureColumn, boundaryIndex: number): number {
+  let height = 0
+  const count = Math.min(Math.max(0, boundaryIndex), col.modules.length)
+  for (let i = 0; i < count; i++) height += col.modules[i]?.height ?? 0
+  return height
+}
+
+function moduleStackStyle(col: FurnitureColumn, moduleIndex: number, mod: FurnitureModule): Record<string, string> {
+  return {
+    height: px(mod.height),
+    bottom: `${zt / 2 + meterToPx(moduleBoundaryHeight(col, moduleIndex))}px`,
+  }
+}
+
+function moduleMeasurementClass(mod: FurnitureModule): string {
+  const base = 'module-measurement pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 truncate rounded bg-default/90 px-1.5 py-0.5 text-[10px] font-semibold leading-none tabular-nums text-toned shadow-sm ring-1 ring-default/60'
+  if (mod.type === 'shelf') return `${base} module-measurement-shelf`
+  return base
+}
+
+function bottomDeckStyle(): Record<string, string> {
+  return {
+    height: `${We}px`,
+    bottom: `${(zt - We) / 2}px`,
+  }
+}
+
+function moduleBoundaryStyle(col: FurnitureColumn, boundaryIndex: number): Record<string, string> {
+  return {
+    height: `${zt}px`,
+    bottom: `${meterToPx(moduleBoundaryHeight(col, boundaryIndex))}px`,
+  }
 }
 
 function boundaryHeight(boundaryIndex: number): number {
@@ -365,225 +441,275 @@ function addButtonMarginTop(boundaryIndex: number): string {
       class="h-full overflow-auto overscroll-contain"
     >
       <div class="flex min-h-full min-w-full items-center justify-center p-4 pb-32 sm:pb-44">
-        <div class="flex w-max items-start justify-center gap-3">
-          <button
-            type="button"
-            aria-label="Add column on the left"
-            class="editor-touch-target flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-inverted shadow-sm transition-[opacity,transform] hover:opacity-90 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            :style="columns.length > 0 ? { marginTop: addButtonMarginTop(0) } : undefined"
-            @click.stop="emit('add-column-left')"
-          >
-            <UIcon
-              name="i-lucide-plus"
-              class="size-3.5"
-            />
-          </button>
-
-          <div class="shrink-0 rounded-lg">
-            <div
-              class="flex w-max items-end"
-              :style="{ height: railBodyHeightPx }"
+        <div class="flex w-max flex-col items-center">
+          <div class="flex w-max items-start justify-center gap-3">
+            <button
+              type="button"
+              :aria-label="t('addColumnLeft')"
+              class="editor-touch-target flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-inverted shadow-sm transition-[opacity,transform] hover:opacity-90 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              :style="columns.length > 0 ? { marginTop: addButtonMarginTop(0) } : undefined"
+              @click.stop="emit('add-column-left')"
             >
-              <div
-                v-if="columns.length > 0"
-                class="column-resize-hit shrink-0 cursor-col-resize touch-none transition-opacity hover:opacity-75"
-                :class="selectedFillClass"
-                :style="{ ...spacerStyle('width'), ...columnResizeMarginStyle(), height: boundaryHeightPx(0) }"
-                role="separator"
-                aria-orientation="vertical"
-                aria-label="Resize column 1"
-                @pointerdown="onColumnResizePointerDown(0, -1, $event)"
+              <UIcon
+                name="i-lucide-plus"
+                class="size-3.5"
               />
+            </button>
 
-              <template
-                v-for="(col, ci) in columns"
-                :key="ci"
+            <div class="shrink-0 rounded-lg">
+              <div
+                class="mx-auto flex w-max items-end"
+                :style="{ height: railBodyHeightPx }"
               >
                 <div
-                  class="flex h-full shrink-0 flex-col justify-end"
-                  :style="{ width: px(col.width) }"
-                >
-                  <div
-                    class="flex flex-col items-stretch"
-                    :style="{ padding: `${qt}px` }"
-                  >
-                    <button
-                      type="button"
-                      class="editor-touch-target self-center flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-inverted shadow-sm transition-[opacity,transform] hover:opacity-90 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                      :style="{ marginBottom: `${Bt}px` }"
-                      :aria-label="`Add module on top of column ${ci + 1}`"
-                      @click.stop="emit('add-module-top', ci)"
-                    >
-                      <UIcon
-                        name="i-lucide-plus"
-                        class="size-3.5"
-                      />
-                    </button>
-
-                    <div
-                      class="flex flex-col-reverse items-stretch"
-                      :style="{ gap: `${Ke}px` }"
-                      :aria-label="`Column ${ci + 1}, width ${formatMeasurement(col.width)} meters`"
-                    >
-                      <span
-                        v-if="col.modules.length > 0"
-                        class="block w-full shrink-0"
-                        :class="selectedFillClass"
-                        :style="spacerStyle('height')"
-                        aria-hidden="true"
-                      />
-
-                      <template
-                        v-for="(mod, mi) in col.modules"
-                        :key="mod.id"
-                      >
-                        <button
-                          type="button"
-                          class="relative block w-full shrink-0 text-left outline-none transition-[opacity,transform,background-color] duration-150 hover:opacity-90 active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-default"
-                          :class="moduleClass(mod)"
-                          :style="{ height: px(mod.height) }"
-                          :aria-label="`${mod.type} module, height ${formatMeasurement(mod.height)} meters`"
-                          @click.stop="onModuleClick($event, mod.id)"
-                        >
-                          <template v-if="mod.type === 'drawer'">
-                            <div
-                              v-for="i in drawerCount(mod) - 1"
-                              :key="`${mod.id}-drawer-sep-${i}`"
-                              class="absolute left-0 right-0 bg-[var(--ui-bg-muted)]"
-                              :style="{ height: '2px', bottom: `${(i / drawerCount(mod)) * 100}%` }"
-                              aria-hidden="true"
-                            />
-                            <template
-                              v-for="i in drawerCount(mod)"
-                              :key="`${mod.id}-dr-${i}`"
-                            >
-                              <div
-                                class="absolute rounded-full"
-                                :class="visualBgClass()"
-                                :style="drawerPullStyle(mod, i, 'left')"
-                              />
-                              <div
-                                class="absolute rounded-full"
-                                :class="visualBgClass()"
-                                :style="drawerPullStyle(mod, i, 'right')"
-                              />
-                            </template>
-                          </template>
-
-                          <div
-                            v-else-if="mod.type === 'left-door'"
-                            class="absolute rounded-full"
-                            :class="visualBgClass()"
-                            :style="leftDoorPullStyle()"
-                          />
-
-                          <div
-                            v-else-if="mod.type === 'right-door'"
-                            class="absolute rounded-full"
-                            :class="visualBgClass()"
-                            :style="rightDoorPullStyle()"
-                          />
-
-                          <template v-else-if="mod.type === 'doors'">
-                            <div
-                              class="absolute"
-                              :class="visualBgClass()"
-                              :style="doorDividerStyle()"
-                            />
-                            <div
-                              class="absolute rounded-full"
-                              :class="visualBgClass()"
-                              :style="doorsPullStyle('left')"
-                            />
-                            <div
-                              class="absolute rounded-full"
-                              :class="visualBgClass()"
-                              :style="doorsPullStyle('right')"
-                            />
-                          </template>
-                        </button>
-
-                        <button
-                          type="button"
-                          class="boundary-resize-hit relative block w-full shrink-0 cursor-row-resize"
-                          :style="{ height: `${zt}px` }"
-                          :aria-label="`Resize module boundary ${mi + 1} in column ${ci + 1}`"
-                          @pointerdown="onBoundaryPointerDown(ci, mi + 1, $event)"
-                        >
-                          <span
-                            class="absolute inset-x-0 top-1/2 -translate-y-1/2"
-                            :class="selectedFillClass"
-                            :style="spacerStyle('height')"
-                          />
-                        </button>
-                      </template>
-                    </div>
-                  </div>
-                </div>
-
-                <div
+                  v-if="columns.length > 0"
                   class="column-resize-hit shrink-0 cursor-col-resize touch-none transition-opacity hover:opacity-75"
                   :class="selectedFillClass"
-                  :style="{ ...spacerStyle('width'), ...columnResizeMarginStyle(), height: boundaryHeightPx(ci + 1) }"
+                  :style="{ ...spacerStyle('width'), ...columnResizeMarginStyle(), height: boundaryHeightPx(0) }"
                   role="separator"
                   aria-orientation="vertical"
-                  :aria-label="`Resize column ${ci + 1}`"
-                  @pointerdown="onColumnResizePointerDown(ci, 1, $event)"
+                  :aria-label="t('resizeColumn', { index: 1 })"
+                  @pointerdown="onColumnResizePointerDown(0, -1, $event)"
                 />
-              </template>
 
-              <div
-                v-if="columns.length === 0"
-                class="flex h-full w-52 items-center justify-center text-sm text-muted"
-              >
-                No columns yet
-              </div>
-            </div>
-
-            <div
-              v-if="columns.length > 0"
-              class="mt-2 flex w-max items-center border-t border-muted pt-2"
-              :style="{ columnGap: metaGap(), paddingLeft: metaGap(), paddingRight: metaGap() }"
-            >
-              <div
-                v-for="(col, ci) in columns"
-                :key="`meta-${ci}`"
-                class="flex shrink-0 flex-col items-center justify-start gap-2"
-                :style="{ width: px(col.width) }"
-              >
-                <button
-                  type="button"
-                  class="editor-touch-target group relative inline-flex items-center text-xs text-muted transition-transform active:scale-[0.97]"
-                  :aria-label="`Remove column ${columnLetter(ci)}`"
-                  @click.stop="emit('remove-column', ci)"
+                <template
+                  v-for="(col, ci) in columns"
+                  :key="ci"
                 >
-                  <span class="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-accented text-xs font-bold text-inverted transition-colors group-hover:bg-elevated">
-                    <span class="group-hover:hidden">{{ columnLetter(ci) }}</span>
-                    <UIcon
-                      name="i-lucide-trash-2"
-                      class="hidden size-3.5 group-hover:block"
-                    />
-                  </span>
-                </button>
-                <p class="text-xs font-semibold tabular-nums text-muted">
-                  {{ formatMeasurement(col.width) }} m
-                </p>
+                  <div
+                    class="flex h-full shrink-0 flex-col justify-end"
+                    :style="{ width: px(col.width) }"
+                  >
+                    <div
+                      class="flex flex-col items-stretch"
+                      :style="{ padding: `${qt}px` }"
+                    >
+                      <button
+                        type="button"
+                        class="editor-touch-target self-center flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-inverted shadow-sm transition-[opacity,transform] hover:opacity-90 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                        :style="{ marginBottom: `${Bt}px` }"
+                        :aria-label="t('addModuleTop', { index: ci + 1 })"
+                        @click.stop="emit('add-module-top', ci)"
+                      >
+                        <UIcon
+                          name="i-lucide-plus"
+                          class="size-3.5"
+                        />
+                      </button>
+
+                      <div
+                        class="relative w-full shrink-0"
+                        :style="{ height: columnStackHeight(col) }"
+                        :aria-label="t('columnDimensionsAria', { index: ci + 1, width: formatCentimeters(col.width), height: formatCentimeters(columnTotalHeight(col)) })"
+                      >
+                        <span
+                          v-if="col.modules.length > 0"
+                          class="absolute inset-x-0 z-10 block"
+                          :class="selectedFillClass"
+                          :style="bottomDeckStyle()"
+                          aria-hidden="true"
+                        />
+
+                        <template
+                          v-for="(mod, mi) in col.modules"
+                          :key="mod.id"
+                        >
+                          <button
+                            type="button"
+                            class="absolute inset-x-0 z-0 block text-left outline-none transition-[opacity,transform,background-color] duration-150 hover:opacity-90 active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-default"
+                            :class="moduleClass(mod)"
+                            :style="moduleStackStyle(col, mi, mod)"
+                            :aria-label="t('moduleHeightAria', { type: moduleTypeText(mod.type), height: formatCentimeters(mod.height) })"
+                            @click.stop="onModuleClick($event, mod.id)"
+                          >
+                            <span
+                              aria-hidden="true"
+                              :class="moduleMeasurementClass(mod)"
+                            >
+                              {{ formatCentimeters(mod.height) }} cm
+                            </span>
+
+                            <template v-if="mod.type === 'drawer'">
+                              <div
+                                v-for="i in drawerCount(mod) - 1"
+                                :key="`${mod.id}-drawer-sep-${i}`"
+                                class="absolute left-0 right-0 bg-[var(--ui-bg-muted)]"
+                                :style="{ height: '2px', bottom: `${(i / drawerCount(mod)) * 100}%` }"
+                                aria-hidden="true"
+                              />
+                              <template
+                                v-for="i in drawerCount(mod)"
+                                :key="`${mod.id}-dr-${i}`"
+                              >
+                                <div
+                                  class="absolute rounded-full"
+                                  :class="visualBgClass()"
+                                  :style="drawerPullStyle(mod, i, 'left')"
+                                />
+                                <div
+                                  class="absolute rounded-full"
+                                  :class="visualBgClass()"
+                                  :style="drawerPullStyle(mod, i, 'right')"
+                                />
+                              </template>
+                            </template>
+
+                            <div
+                              v-else-if="mod.type === 'left-door'"
+                              class="absolute rounded-full"
+                              :class="visualBgClass()"
+                              :style="leftDoorPullStyle()"
+                            />
+
+                            <div
+                              v-else-if="mod.type === 'right-door'"
+                              class="absolute rounded-full"
+                              :class="visualBgClass()"
+                              :style="rightDoorPullStyle()"
+                            />
+
+                            <template v-else-if="mod.type === 'doors'">
+                              <div
+                                class="absolute"
+                                :class="visualBgClass()"
+                                :style="doorDividerStyle()"
+                              />
+                              <div
+                                class="absolute rounded-full"
+                                :class="visualBgClass()"
+                                :style="doorsPullStyle('left')"
+                              />
+                              <div
+                                class="absolute rounded-full"
+                                :class="visualBgClass()"
+                                :style="doorsPullStyle('right')"
+                              />
+                            </template>
+                          </button>
+
+                          <button
+                            type="button"
+                            class="boundary-resize-hit absolute inset-x-0 z-20 block cursor-row-resize"
+                            :style="moduleBoundaryStyle(col, mi + 1)"
+                            :aria-label="t('resizeModuleBoundary', { boundary: mi + 1, column: ci + 1 })"
+                            @pointerdown="onBoundaryPointerDown(ci, mi + 1, $event)"
+                          >
+                            <span
+                              class="absolute inset-x-0 top-1/2 -translate-y-1/2"
+                              :class="selectedFillClass"
+                              :style="spacerStyle('height')"
+                            />
+                          </button>
+                        </template>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    class="column-resize-hit shrink-0 cursor-col-resize touch-none transition-opacity hover:opacity-75"
+                    :class="selectedFillClass"
+                    :style="{ ...spacerStyle('width'), ...columnResizeMarginStyle(), height: boundaryHeightPx(ci + 1) }"
+                    role="separator"
+                    aria-orientation="vertical"
+                    :aria-label="t('resizeColumn', { index: ci + 1 })"
+                    @pointerdown="onColumnResizePointerDown(ci, 1, $event)"
+                  />
+                </template>
+
+                <div
+                  v-if="columns.length === 0"
+                  class="flex h-full w-52 items-center justify-center text-sm text-muted"
+                >
+                  {{ t('noColumnsYet') }}
+                </div>
+              </div>
+
+              <div
+                v-if="columns.length > 0"
+                class="mx-auto mt-2 flex w-max items-center border-t border-muted pt-2"
+                :style="{ columnGap: metaGap(), paddingLeft: metaGap(), paddingRight: metaGap() }"
+              >
+                <div
+                  v-for="(col, ci) in columns"
+                  :key="`meta-${ci}`"
+                  class="flex shrink-0 flex-col items-center justify-start gap-2"
+                  :style="{ width: px(col.width) }"
+                >
+                  <button
+                    type="button"
+                    class="editor-touch-target group relative inline-flex items-center text-xs text-muted transition-transform active:scale-[0.97]"
+                    :aria-label="t('removeColumn', { letter: columnLetter(ci) })"
+                    @click.stop="emit('remove-column', ci)"
+                  >
+                    <span class="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-accented text-xs font-bold text-inverted transition-colors group-hover:bg-elevated">
+                      <span class="group-hover:hidden">{{ columnLetter(ci) }}</span>
+                      <UIcon
+                        name="i-lucide-trash-2"
+                        class="hidden size-3.5 group-hover:block"
+                      />
+                    </span>
+                  </button>
+                  <p class="text-xs font-semibold tabular-nums text-muted">
+                    {{ t('widthCompact') }} {{ formatCentimeters(col.width) }} cm
+                  </p>
+                  <p class="-mt-1 text-xs font-semibold tabular-nums text-muted">
+                    {{ t('heightCompact') }} {{ formatCentimeters(columnTotalHeight(col)) }} cm
+                  </p>
+                </div>
               </div>
             </div>
+
+            <button
+              type="button"
+              :aria-label="t('addColumnRight')"
+              class="editor-touch-target flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-inverted shadow-sm transition-[opacity,transform] hover:opacity-90 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              :style="columns.length > 0 ? { marginTop: addButtonMarginTop(columns.length) } : undefined"
+              @click.stop="emit('add-column-right')"
+            >
+              <UIcon
+                name="i-lucide-plus"
+                class="size-3.5"
+              />
+            </button>
           </div>
 
-          <button
-            type="button"
-            aria-label="Add column on the right"
-            class="editor-touch-target flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-inverted shadow-sm transition-[opacity,transform] hover:opacity-90 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            :style="columns.length > 0 ? { marginTop: addButtonMarginTop(columns.length) } : undefined"
-            @click.stop="emit('add-column-right')"
+          <div
+            v-if="columns.length > 0"
+            class="mt-3 flex w-max items-center justify-center gap-1.5 border-t border-muted pt-3 text-xs tabular-nums"
           >
-            <UIcon
-              name="i-lucide-plus"
-              class="size-3.5"
-            />
-          </button>
+            <label
+              v-for="item in projectDetailItems"
+              :key="item.key"
+              class="inline-flex min-h-6 items-center gap-1 rounded-md bg-muted px-1.5 text-muted ring-1 ring-default/60"
+              @click.stop
+            >
+              <span class="text-[11px] font-medium">{{ item.compactLabel }}</span>
+              <input
+                :value="projectDetailValue(item)"
+                type="text"
+                inputmode="decimal"
+                class="w-9 rounded bg-transparent px-0.5 text-right font-semibold text-highlighted outline-none transition-colors focus:bg-elevated"
+                :aria-label="t('detailCentimetersAria', { label: item.label })"
+                @click.stop
+                @keydown.enter.prevent="commitProjectDetail(item, $event)"
+                @blur="commitProjectDetail(item, $event)"
+              >
+              <span class="text-[11px] font-semibold text-highlighted">cm</span>
+            </label>
+
+            <button
+              type="button"
+              class="inline-flex min-h-6 items-center gap-1 rounded-md bg-primary px-2 text-[11px] font-semibold text-inverted shadow-sm transition-[opacity,transform] hover:opacity-90 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              :aria-label="t('openProjectDetails')"
+              @click.stop="emit('open-project-details')"
+            >
+              <UIcon
+                name="i-lucide-sliders-horizontal"
+                class="size-3"
+              />
+              <span>{{ t('details') }}</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -618,9 +744,14 @@ function addButtonMarginTop(boundaryIndex: number): string {
     transparent 12px
   );
 }
+.module-measurement {
+  max-width: calc(100% - 0.5rem);
+}
+.module-measurement-shelf {
+  color: var(--ui-primary);
+}
 .editor-touch-target,
-.column-resize-hit,
-.boundary-resize-hit {
+.column-resize-hit {
   position: relative;
 }
 .editor-touch-target::after {

@@ -18,6 +18,7 @@ import { makePanelMaterial, type PanelMaterialMode, type PanelMaterialSpec } fro
 import { DEFAULT_CAMERA_STATE, hexColorToNumber, normalizePublicStyle } from '~~/shared/domain/defaults'
 import { resolveMaterial, type CabinetPart } from '~~/shared/domain/materials'
 import type { CameraState, CompiledPanel, FurnitureDoc, PanelOperation, PublicStyle } from '~~/shared/domain/types'
+import { uiText as t } from '~~/shared/i18n/ui-copy'
 
 // ---------------------------------------------------------------------------
 // Constants (mirroring Dt_x5Iy5.js module-level constants)
@@ -1863,14 +1864,14 @@ watch(
         <div
           class="flex flex-row flex-wrap items-center gap-0.5 rounded-full bg-muted p-1 shadow-md ring-1 ring-default/60"
           role="group"
-          aria-label="Assembly preview"
+          :aria-label="t('assemblyPreview')"
         >
           <UButton
             icon="i-lucide-package"
             size="sm"
             color="neutral"
             :variant="assemblyMode === 'normal' ? 'solid' : 'ghost'"
-            aria-label="Normal assembly view"
+            :aria-label="t('normalAssemblyView')"
             :aria-pressed="assemblyMode === 'normal'"
             class="size-8 justify-center rounded-full active:scale-[0.97] transition-transform duration-150"
             @click="setAssemblyMode('normal')"
@@ -1880,7 +1881,7 @@ watch(
             size="sm"
             color="neutral"
             :variant="assemblyMode === 'open-doors' ? 'solid' : 'ghost'"
-            aria-label="Open doors and drawers preview"
+            :aria-label="t('openDoorsDrawersPreview')"
             :aria-pressed="assemblyMode === 'open-doors'"
             class="size-8 justify-center rounded-full active:scale-[0.97] transition-transform duration-150"
             @click="setAssemblyMode('open-doors')"
@@ -1890,7 +1891,7 @@ watch(
             size="sm"
             color="neutral"
             :variant="assemblyMode === 'space-modules' ? 'solid' : 'ghost'"
-            aria-label="Space modules view — pull panels apart"
+            :aria-label="t('spaceModulesView')"
             :aria-pressed="assemblyMode === 'space-modules'"
             class="size-8 justify-center rounded-full active:scale-[0.97] transition-transform duration-150"
             @click="setAssemblyMode('space-modules')"
@@ -1899,14 +1900,14 @@ watch(
         <div
           class="flex flex-wrap rounded-full bg-muted p-1 shadow-md ring-1 ring-default/60"
           role="group"
-          aria-label="Canvas render mode"
+          :aria-label="t('canvasRenderMode')"
         >
           <UButton
             icon="i-lucide-drafting-compass"
             size="sm"
             color="neutral"
             :variant="renderMode === 'technical' ? 'solid' : 'ghost'"
-            aria-label="Technical drawing — outlines only"
+            :aria-label="t('technicalDrawing')"
             :aria-pressed="renderMode === 'technical'"
             class="size-8 justify-center rounded-full active:scale-[0.97] transition-transform duration-150"
             @click="emit('update:renderMode', 'technical')"
@@ -1916,7 +1917,7 @@ watch(
             size="sm"
             color="neutral"
             :variant="renderMode === 'render-debug' ? 'solid' : 'ghost'"
-            aria-label="Render debug — lit mesh with role colors"
+            :aria-label="t('renderDebug')"
             :aria-pressed="renderMode === 'render-debug'"
             class="size-8 justify-center rounded-full active:scale-[0.97] transition-transform duration-150"
             @click="emit('update:renderMode', 'render-debug')"

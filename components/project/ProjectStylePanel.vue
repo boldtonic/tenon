@@ -2,6 +2,7 @@
 import type { MaterialAssignment, PublicStyle, RenderStyle } from '~~/shared/domain/types'
 import { DEFAULT_PUBLIC_STYLE, normalizeHexColor, normalizePublicStyle } from '~~/shared/domain/defaults'
 import { CABINET_PARTS, type CabinetPart } from '~~/shared/domain/materials'
+import { cabinetPartText, uiText as t } from '~~/shared/i18n/ui-copy'
 
 interface Props {
   surface?: 'floating' | 'pane' | 'sidebar'
@@ -25,27 +26,30 @@ const panelClass = computed(() =>
 const technicalRows = computed(() => {
   const colors = style.value.technical.colors
   return [
-    { key: 'background', label: 'Background', value: colors.background },
-    { key: 'grid', label: 'Grid', value: colors.grid },
-    { key: 'outlines', label: 'Outlines', value: colors.outlines },
-    { key: 'fills', label: 'Fills', value: colors.fills },
+    { key: 'background', label: t('background'), value: colors.background },
+    { key: 'grid', label: t('grid'), value: colors.grid },
+    { key: 'outlines', label: t('outlines'), value: colors.outlines },
+    { key: 'fills', label: t('fills'), value: colors.fills },
   ]
 })
 const renderedBackgroundRows = computed(() => {
   const colors = style.value.rendered.colors
   return [
-    { key: 'background', label: 'Background', value: colors.background },
-    { key: 'grid', label: 'Grid', value: colors.grid },
+    { key: 'background', label: t('background'), value: colors.background },
+    { key: 'grid', label: t('grid'), value: colors.grid },
   ]
 })
 const isTechnical = computed(() => style.value.renderStyle === 'technical')
 const technicalLineRows = computed(() => technicalRows.value.filter(row => row.key === 'outlines' || row.key === 'fills'))
 const technicalSceneRows = computed(() => technicalRows.value.filter(row => row.key === 'background' || row.key === 'grid'))
 const mobileTabs = computed<{ value: MobileStyleTab, label: string }[]>(() => [
-  { value: 'parts', label: isTechnical.value ? 'Lines' : 'Parts' },
-  { value: 'mode', label: 'Mode' },
-  { value: 'scene', label: 'Scene' },
+  { value: 'parts', label: isTechnical.value ? t('lines') : t('parts') },
+  { value: 'mode', label: t('mode') },
+  { value: 'scene', label: t('scene') },
 ])
+const cabinetParts = computed(() =>
+  CABINET_PARTS.map(part => ({ ...part, ...cabinetPartText(part.key) })),
+)
 
 function setRenderStyle(renderStyle: RenderStyle) {
   model.value = normalizePublicStyle({ ...style.value, renderStyle })
@@ -141,13 +145,13 @@ function resetActiveStyle() {
   <div
     v-if="surface === 'pane'"
     class="style-mobile-controls pointer-events-auto h-full min-h-0 w-full"
-    aria-label="Public style controls"
+    :aria-label="t('publicStyleControls')"
   >
     <div class="style-mobile-card">
       <div
         class="style-mobile-tabs"
         role="tablist"
-        aria-label="Style settings"
+        :aria-label="t('styleSettings')"
       >
         <button
           v-for="tab in mobileTabs"
@@ -174,22 +178,22 @@ function resetActiveStyle() {
           >
             <div class="style-section-title-row">
               <h3 class="style-section-heading">
-                Mode
+                {{ t('mode') }}
               </h3>
               <div class="style-section-divider" />
             </div>
 
             <div class="style-section-controls">
               <div class="style-control-row">
-                <span class="style-row-label">Style</span>
-                <span class="style-pill-group" role="group" aria-label="Rendering style">
+                <span class="style-row-label">{{ t('style') }}</span>
+                <span class="style-pill-group" role="group" :aria-label="t('renderingStyle')">
                   <button
                     type="button"
                     class="style-select-pill"
                     :data-active="isTechnical ? '' : undefined"
                     @click="setRenderStyle('technical')"
                   >
-                    Technical
+                    {{ t('technical') }}
                   </button>
                   <button
                     type="button"
@@ -197,7 +201,7 @@ function resetActiveStyle() {
                     :data-active="!isTechnical ? '' : undefined"
                     @click="setRenderStyle('rendered')"
                   >
-                    Rendered
+                    {{ t('rendered') }}
                   </button>
                 </span>
               </div>
@@ -210,7 +214,7 @@ function resetActiveStyle() {
           >
             <div class="style-section-title-row">
               <h3 class="style-section-heading">
-                {{ isTechnical ? 'Lines' : 'Parts' }}
+                {{ isTechnical ? t('lines') : t('parts') }}
               </h3>
               <div class="style-section-divider" />
             </div>
@@ -231,7 +235,7 @@ function resetActiveStyle() {
                     type="text"
                     inputmode="text"
                     class="style-hex-input"
-                    :aria-label="`${row.label} hex color`"
+                    :aria-label="t('hexColorAria', { label: row.label })"
                     @keydown.enter.prevent="onColorTextCommit(row.key, row.value, $event)"
                     @blur="onColorTextCommit(row.key, row.value, $event)"
                   >
@@ -252,7 +256,7 @@ function resetActiveStyle() {
               class="style-section-controls"
             >
               <ProjectMaterialPicker
-                v-for="part in CABINET_PARTS"
+                v-for="part in cabinetParts"
                 :key="part.key"
                 :label="part.label"
                 :hint="part.hint"
@@ -271,7 +275,7 @@ function resetActiveStyle() {
           >
             <div class="style-section-title-row">
               <h3 class="style-section-heading">
-                Scene
+                {{ t('scene') }}
               </h3>
               <div class="style-section-divider" />
             </div>
@@ -289,7 +293,7 @@ function resetActiveStyle() {
                     type="text"
                     inputmode="text"
                     class="style-hex-input"
-                    :aria-label="`${row.label} hex color`"
+                    :aria-label="t('hexColorAria', { label: row.label })"
                     @keydown.enter.prevent="onColorTextCommit(row.key, row.value, $event)"
                     @blur="onColorTextCommit(row.key, row.value, $event)"
                   >
@@ -314,7 +318,7 @@ function resetActiveStyle() {
           class="style-reset-button"
           @click="resetActiveStyle"
         >
-          Reset style
+          {{ t('resetStyle') }}
         </button>
       </div>
     </div>
@@ -323,7 +327,7 @@ function resetActiveStyle() {
   <aside
     v-else-if="surface === 'sidebar'"
     class="style-sidebar-controls pointer-events-auto h-full min-h-0 w-full"
-    aria-label="Public style controls"
+    :aria-label="t('publicStyleControls')"
   >
     <div class="style-sidebar-shell">
       <div class="style-sidebar-inner">
@@ -332,22 +336,22 @@ function resetActiveStyle() {
             <section class="style-mobile-section style-section-mode">
               <div class="style-section-title-row">
                 <h3 class="style-section-heading">
-                  Mode
+                  {{ t('mode') }}
                 </h3>
                 <div class="style-section-divider" />
               </div>
 
               <div class="style-section-controls">
                 <div class="style-control-row">
-                  <span class="style-row-label">Style</span>
-                  <span class="style-pill-group" role="group" aria-label="Rendering style">
+                  <span class="style-row-label">{{ t('style') }}</span>
+                  <span class="style-pill-group" role="group" :aria-label="t('renderingStyle')">
                     <button
                       type="button"
                       class="style-select-pill"
                       :data-active="isTechnical ? '' : undefined"
                       @click="setRenderStyle('technical')"
                     >
-                      Technical
+                      {{ t('technical') }}
                     </button>
                     <button
                       type="button"
@@ -355,7 +359,7 @@ function resetActiveStyle() {
                       :data-active="!isTechnical ? '' : undefined"
                       @click="setRenderStyle('rendered')"
                     >
-                      Rendered
+                      {{ t('rendered') }}
                     </button>
                   </span>
                 </div>
@@ -365,7 +369,7 @@ function resetActiveStyle() {
             <section class="style-mobile-section style-section-parts">
               <div class="style-section-title-row">
                 <h3 class="style-section-heading">
-                  {{ isTechnical ? 'Lines' : 'Parts' }}
+                  {{ isTechnical ? t('lines') : t('parts') }}
                 </h3>
                 <div class="style-section-divider" />
               </div>
@@ -386,7 +390,7 @@ function resetActiveStyle() {
                       type="text"
                       inputmode="text"
                       class="style-hex-input"
-                      :aria-label="`${row.label} hex color`"
+                      :aria-label="t('hexColorAria', { label: row.label })"
                       @keydown.enter.prevent="onColorTextCommit(row.key, row.value, $event)"
                       @blur="onColorTextCommit(row.key, row.value, $event)"
                     >
@@ -407,7 +411,7 @@ function resetActiveStyle() {
                 class="style-section-controls"
               >
                 <ProjectMaterialPicker
-                  v-for="part in CABINET_PARTS"
+                  v-for="part in cabinetParts"
                   :key="part.key"
                   :label="part.label"
                   :hint="part.hint"
@@ -423,7 +427,7 @@ function resetActiveStyle() {
             <section class="style-mobile-section style-section-scene">
               <div class="style-section-title-row">
                 <h3 class="style-section-heading">
-                  Scene
+                  {{ t('scene') }}
                 </h3>
                 <div class="style-section-divider" />
               </div>
@@ -441,7 +445,7 @@ function resetActiveStyle() {
                       type="text"
                       inputmode="text"
                       class="style-hex-input"
-                      :aria-label="`${row.label} hex color`"
+                      :aria-label="t('hexColorAria', { label: row.label })"
                       @keydown.enter.prevent="onColorTextCommit(row.key, row.value, $event)"
                       @blur="onColorTextCommit(row.key, row.value, $event)"
                     >
@@ -466,7 +470,7 @@ function resetActiveStyle() {
             class="style-reset-button"
             @click="resetActiveStyle"
           >
-            Reset style
+            {{ t('resetStyle') }}
           </button>
         </div>
       </div>
@@ -477,17 +481,17 @@ function resetActiveStyle() {
     <div class="mb-3 flex items-center justify-between gap-3">
       <div>
         <p class="text-xs font-semibold uppercase tracking-wide text-muted">
-          Public style
+          {{ t('publicStyle') }}
         </p>
         <p class="text-balance text-sm font-semibold text-highlighted">
-          Canvas rendering
+          {{ t('canvasRendering') }}
         </p>
       </div>
       <UButton
         size="xs"
         color="neutral"
         variant="ghost"
-        label="Reset"
+        :label="t('reset')"
         class="min-h-10 rounded-full transition-transform active:scale-[0.97]"
         @click="resetActiveStyle"
       />
@@ -496,12 +500,12 @@ function resetActiveStyle() {
     <div
       class="mb-3 flex rounded-full bg-default p-1 shadow-sm ring-1 ring-default/60"
       role="group"
-      aria-label="Rendering style"
+      :aria-label="t('renderingStyle')"
     >
       <UButton
         size="xs"
         color="neutral"
-        label="Technical"
+        :label="t('technical')"
         class="h-10 min-h-10 flex-1 rounded-full transition-transform active:scale-[0.97]"
         :variant="isTechnical ? 'solid' : 'ghost'"
         @click="setRenderStyle('technical')"
@@ -509,7 +513,7 @@ function resetActiveStyle() {
       <UButton
         size="xs"
         color="neutral"
-        label="Rendered"
+        :label="t('rendered')"
         class="h-10 min-h-10 flex-1 rounded-full transition-transform active:scale-[0.97]"
         :variant="isTechnical ? 'ghost' : 'solid'"
         @click="setRenderStyle('rendered')"
@@ -540,11 +544,11 @@ function resetActiveStyle() {
 
     <template v-else>
       <p class="mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">
-        Materials
+        {{ t('materials') }}
       </p>
       <div class="space-y-1.5">
         <ProjectMaterialPicker
-          v-for="part in CABINET_PARTS"
+          v-for="part in cabinetParts"
           :key="part.key"
           :label="part.label"
           :hint="part.hint"
@@ -556,7 +560,7 @@ function resetActiveStyle() {
       </div>
 
       <p class="mt-3 mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">
-        Scene
+        {{ t('scene') }}
       </p>
       <div class="space-y-2">
         <label
