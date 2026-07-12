@@ -325,11 +325,12 @@ function backPanelGrooveDepth(config: FurnitureConfig): number {
 
 function makeVerticalSide(boundaryIndex: number, x: number, height: number, config: FurnitureConfig, touchedModuleIds: string[]): CompiledPanel {
   const overhang = config.sidePanelOverhang
+  const deckThickness = config.panelThickness
   return makePanel({
     key: `vertical:boundary:${boundaryIndex}`,
     role: 'vertical-side',
     position: { x, y: height / 2, z: 0 },
-    size: { width: config.depth, height: height + 2 * overhang, thickness: config.panelThickness },
+    size: { width: config.depth, height: height + deckThickness + 2 * overhang, thickness: config.panelThickness },
     orientation: 'vertical-yz',
     touchedModuleIds,
   })
@@ -753,7 +754,7 @@ export function compileAssembly(furnitureDoc: FurnitureDoc, _opts: CompileOption
     }
   }
 
-  const normalizedPanels = panels.map(panel => normalizePanel(panel, config.sidePanelOverhang))
+  const normalizedPanels = panels.map(panel => normalizePanel(panel, config.sidePanelOverhang + config.panelThickness / 2))
   const normalizedOperations = operations.map(normalizeOperation)
   const normalizedPanelMap = new Map(normalizedPanels.map(panel => [panel.key, panel]))
   for (const operation of normalizedOperations) {
