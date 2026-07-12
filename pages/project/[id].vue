@@ -597,6 +597,7 @@ function onSplitRatioUpdate(value: number) {
 
 function onPillRestart() {
   if (!docRef.value) return
+  selectedModules.value = []
   replaceFurnitureDoc(docRef.value as any, {
     config: { ...DEFAULT_FURNITURE_CONFIG },
     columns: [],
