@@ -1,7 +1,10 @@
 import type { FurnitureConfig, ModuleType, PanelRole } from '~~/shared/domain/types'
 import type { CabinetPart, MaterialCategory, MaterialPreset } from '~~/shared/domain/materials'
+import { resolveInitialLocale, UI_LOCALE_STORAGE_KEY } from '~~/shared/i18n/locale'
 
-export const ACTIVE_UI_LOCALE = 'es' as const
+export const ACTIVE_UI_LOCALE: UiLocale = resolveInitialLocale(
+  typeof localStorage === 'undefined' ? null : localStorage.getItem(UI_LOCALE_STORAGE_KEY),
+)
 
 export const uiCopy = {
   en: {
