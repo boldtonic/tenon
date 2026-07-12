@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { CameraState, CloudProjectRecord, LocalProjectRow, PublicStyle, ViewMode } from '~~/shared/domain/types'
-import { DEFAULT_CAMERA_STATE, normalizePublicStyle } from '~~/shared/domain/defaults'
+import { DEFAULT_CAMERA_STATE, DEFAULT_FURNITURE_CONFIG, normalizePublicStyle } from '~~/shared/domain/defaults'
 import { uiText as t } from '~~/shared/i18n/ui-copy'
+import { replaceFurnitureDoc } from '~~/shared/yjs/doc'
 import { exportDoc } from '~~/shared/yjs/morti-format'
 
 definePageMeta({ layout: false })
@@ -594,6 +595,14 @@ function onSplitRatioUpdate(value: number) {
   else splitRatio.value = clampDesktopSplitRatio(value)
 }
 
+function onPillRestart() {
+  if (!docRef.value) return
+  replaceFurnitureDoc(docRef.value as any, {
+    config: { ...DEFAULT_FURNITURE_CONFIG },
+    columns: [],
+  })
+}
+
 function confirmCutlistWipAlert() {
   cutlistWipConfirmed.value = true
   if (import.meta.client) localStorage.setItem(CUTLIST_WIP_STORAGE_KEY, 'true')
@@ -798,6 +807,11 @@ const canvasChromeTeleportSelector = computed(() =>
                   v-model:selected-drawing-key="cutlistSelectedDrawingKey"
                   :ydoc="(docRef as any)"
                   class="h-full min-h-0 w-full"
+                />
+                <ProductPill
+                  v-if="docRef"
+                  class="absolute bottom-3 left-1/2 z-20 -translate-x-1/2"
+                  @restart="onPillRestart"
                 />
               </div>
             </Suspense>
