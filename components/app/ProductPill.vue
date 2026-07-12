@@ -41,6 +41,11 @@ function onMarkClick() {
   if (level.value === 0) level.value = 1
 }
 
+function openMore() {
+  pinned.value = true
+  level.value = 2
+}
+
 function collapse() {
   pinned.value = false
   level.value = 0
@@ -148,7 +153,7 @@ function onRestartConfirm() {
           variant="ghost"
           class="rounded-full transition-transform active:scale-[0.95]"
           :aria-label="t('pillMoreAria')"
-          @click="level = 2"
+          @click="openMore"
         />
 
         <template v-else>
