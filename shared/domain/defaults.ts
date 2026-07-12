@@ -91,20 +91,20 @@ export const DEFAULT_PUBLIC_STYLE: PublicStyle = {
   renderStyle: 'rendered',
   technical: {
     colors: {
-      background: '#1c1917',
-      grid: '#78716c',
-      outlines: '#f59e0b',
-      fills: '#1c1917',
+      background: '#f5f5f7',
+      grid: '#c7c7cc',
+      outlines: '#9a7a50',
+      fills: '#eeeeef',
     },
   },
   rendered: {
     colors: {
-      background: '#4d4a49',
-      grid: '#a8a29e',
-      defaultPanel: '#aaaaaa',
-      verticalSide: '#2d8ed1',
-      horizontalDeck: '#26bf67',
-      moduleFront: '#ffc21c',
+      background: '#e5e5e7',
+      grid: '#b9b9bf',
+      defaultPanel: '#f4f3ef',
+      verticalSide: '#f4f3ef',
+      horizontalDeck: '#f4f3ef',
+      moduleFront: '#d8d9dc',
     },
     materials: {
       carcass: defaultAssignment('carcass'),

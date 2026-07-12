@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { DEFAULT_FURNITURE_CONFIG } from '~~/shared/domain/defaults'
 import type { FurnitureColumn, FurnitureConfig, FurnitureModule } from '~~/shared/domain/types'
 import { moduleTypeText, uiText as t } from '~~/shared/i18n/ui-copy'
 
@@ -128,8 +129,18 @@ function formatCentimeters(meters: number): string {
 const projectDetailItems: ProjectDetailItem[] = [
   { key: 'depth', label: t('depth'), compactLabel: t('depth') },
   { key: 'panelThickness', label: t('thickness'), compactLabel: t('thicknessCompact') },
-  { key: 'sidePanelOverhang', label: t('overhang'), compactLabel: t('overhangCompact'), allowZero: true },
 ]
+const overhangDetailItem: ProjectDetailItem = { key: 'sidePanelOverhang', label: t('overhang'), compactLabel: t('overhangCompact'), allowZero: true }
+const lastPositiveOverhang = ref(DEFAULT_FURNITURE_CONFIG.sidePanelOverhang)
+const overhangEnabled = computed<boolean>(() => props.config.sidePanelOverhang > 0)
+
+watch(
+  () => props.config.sidePanelOverhang,
+  (value) => {
+    if (Number.isFinite(value) && value > 0) lastPositiveOverhang.value = value
+  },
+  { immediate: true },
+)
 
 function projectDetailValue(item: ProjectDetailItem): string {
   return formatCentimeters(props.config[item.key])
@@ -151,6 +162,13 @@ function commitProjectDetail(item: ProjectDetailItem, event: Event) {
   const meters = centimeters / 100
   emit('set-config-value', item.key, meters)
   input.value = formatCentimeters(meters)
+}
+
+function setOverhangEnabled(enabled: boolean) {
+  const next = enabled
+    ? lastPositiveOverhang.value || DEFAULT_FURNITURE_CONFIG.sidePanelOverhang
+    : 0
+  emit('set-config-value', 'sidePanelOverhang', next)
 }
 
 function pullHoleEdgeInset(): number {
@@ -441,7 +459,7 @@ function addButtonMarginTop(boundaryIndex: number): string {
       class="h-full overflow-auto overscroll-contain"
     >
       <div class="flex min-h-full min-w-full items-center justify-center p-4 pb-32 sm:pb-44">
-        <div class="flex w-max flex-col items-center">
+        <div class="designer-content-column flex flex-col items-center">
           <div class="flex w-max items-start justify-center gap-3">
             <button
               type="button"
@@ -675,7 +693,7 @@ function addButtonMarginTop(boundaryIndex: number): string {
 
           <div
             v-if="columns.length > 0"
-            class="mt-3 flex w-max items-center justify-center gap-1.5 border-t border-muted pt-3 text-xs tabular-nums"
+            class="designer-detail-controls mt-3 flex items-center gap-1.5 border-t border-muted pt-3 text-xs tabular-nums"
           >
             <label
               v-for="item in projectDetailItems"
@@ -697,6 +715,50 @@ function addButtonMarginTop(boundaryIndex: number): string {
               <span class="text-[11px] font-semibold text-highlighted">cm</span>
             </label>
 
+            <div
+              class="inline-flex min-h-6 items-center gap-1 rounded-md bg-muted px-1.5 text-muted ring-1 ring-default/60"
+              @click.stop
+            >
+              <span class="text-[11px] font-medium">{{ overhangDetailItem.compactLabel }}</span>
+              <span
+                class="inline-flex rounded bg-default/70 p-0.5 ring-1 ring-default/50"
+                role="group"
+                :aria-label="overhangDetailItem.label"
+              >
+                <button
+                  type="button"
+                  class="min-h-5 rounded px-1.5 text-[11px] font-semibold transition-[background-color,color,transform] active:scale-[0.97]"
+                  :class="!overhangEnabled ? 'bg-primary text-inverted shadow-sm' : 'text-muted hover:text-highlighted'"
+                  :aria-pressed="!overhangEnabled"
+                  @click.stop="setOverhangEnabled(false)"
+                >
+                  {{ t('no') }}
+                </button>
+                <button
+                  type="button"
+                  class="min-h-5 rounded px-1.5 text-[11px] font-semibold transition-[background-color,color,transform] active:scale-[0.97]"
+                  :class="overhangEnabled ? 'bg-primary text-inverted shadow-sm' : 'text-muted hover:text-highlighted'"
+                  :aria-pressed="overhangEnabled"
+                  @click.stop="setOverhangEnabled(true)"
+                >
+                  {{ t('yes') }}
+                </button>
+              </span>
+              <template v-if="overhangEnabled">
+                <input
+                  :value="projectDetailValue(overhangDetailItem)"
+                  type="text"
+                  inputmode="decimal"
+                  class="w-9 rounded bg-transparent px-0.5 text-right font-semibold text-highlighted outline-none transition-colors focus:bg-elevated"
+                  :aria-label="t('detailCentimetersAria', { label: overhangDetailItem.label })"
+                  @click.stop
+                  @keydown.enter.prevent="commitProjectDetail(overhangDetailItem, $event)"
+                  @blur="commitProjectDetail(overhangDetailItem, $event)"
+                >
+                <span class="text-[11px] font-semibold text-highlighted">cm</span>
+              </template>
+            </div>
+
             <button
               type="button"
               class="inline-flex min-h-6 items-center gap-1 rounded-md bg-primary px-2 text-[11px] font-semibold text-inverted shadow-sm transition-[opacity,transform] hover:opacity-90 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
@@ -717,6 +779,31 @@ function addButtonMarginTop(boundaryIndex: number): string {
 </template>
 
 <style scoped>
+.designer-content-column {
+  width: 100%;
+  min-width: 0;
+}
+
+.designer-detail-controls {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: center;
+  border-top: 0;
+}
+
+.designer-detail-controls::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: max(0px, calc(100% - 8rem));
+  max-width: 100%;
+  transform: translateX(-50%);
+  border-top: 1px solid var(--ui-border-muted);
+}
+
 .module-shelf {
   background-color: transparent;
   border: 1px solid var(--ui-primary);

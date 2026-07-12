@@ -810,7 +810,9 @@ const materialPresetCopy: Record<UiLocale, Record<string, { label: string, sheen
     'cherry-aged': { label: 'Cerezo envejecido', sheenLabel: 'Satinado cálido' },
     'baltic-birch': { label: 'Contrachapado de abedul báltico', sheenLabel: 'Cera ligera' },
     'ebonized-oak': { label: 'Roble ebonizado', sheenLabel: 'Poro abierto' },
-    'white-lacquer': { label: 'Lacado blanco', sheenLabel: 'Semibrillo' },
+    'white-lacquer': { label: 'Lacado blanco suave', sheenLabel: 'Semibrillo' },
+    'soft-gray-lacquer': { label: 'Lacado gris suave', sheenLabel: 'Laca satinada' },
+    'graphite-lacquer': { label: 'Lacado grafito', sheenLabel: 'Laca satinada' },
     'charcoal-lacquer': { label: 'Lacado carbón', sheenLabel: 'Semibrillo' },
   },
 }

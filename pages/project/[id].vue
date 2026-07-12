@@ -86,12 +86,26 @@ const isEditingPublishedCopy = computed<boolean>(
   () => isCloudAuthed.value && !!project.value && isPublished.value,
 )
 const isMobileViewport = ref(false)
+const viewportWidth = ref(0)
 const MOBILE_ASSEMBLY_PREVIEW_RATIO = 0.5
-const STYLE_DESKTOP_PREVIEW_RATIO = 0.76
+const DESKTOP_SIDEBAR_MIN_WIDTH_PX = 496
+const EDITOR_SPLIT_DIVIDER_WIDTH_PX = 9
+const PROJECT_TOP_CHROME_LEFT_PX = 16
+const PROJECT_TOP_CHROME_END_GAP_PX = 16
 let mobileViewportQuery: MediaQueryList | null = null
 
-function updateMobileViewport() {
+function clampDesktopSplitRatio(value: number): number {
+  const ratio = Number.isFinite(value) ? Math.min(0.95, Math.max(0.05, value)) : 0.55
+  const width = viewportWidth.value
+  if (width <= 0) return ratio
+  const maxPreviewRatio = Math.max(0.05, 1 - (DESKTOP_SIDEBAR_MIN_WIDTH_PX + EDITOR_SPLIT_DIVIDER_WIDTH_PX) / width)
+  return Math.min(ratio, maxPreviewRatio)
+}
+
+function updateViewportMetrics() {
   isMobileViewport.value = mobileViewportQuery?.matches ?? false
+  viewportWidth.value = window.innerWidth
+  if (!isMobileViewport.value) splitRatio.value = clampDesktopSplitRatio(splitRatio.value)
 }
 
 const collapseEditorInputs = computed<boolean>(
@@ -99,9 +113,8 @@ const collapseEditorInputs = computed<boolean>(
 )
 const activeSplitRatio = computed<number>(() => {
   if (viewMode.value === 'cutlist') return isMobileViewport.value ? 0.46 : 0.5
-  if (styleTabFlag.value && viewMode.value === 'style') return isMobileViewport.value ? mobileSplitRatio.value : STYLE_DESKTOP_PREVIEW_RATIO
   if (collapseEditorInputs.value) return 1
-  return isMobileViewport.value ? mobileSplitRatio.value : splitRatio.value
+  return isMobileViewport.value ? mobileSplitRatio.value : clampDesktopSplitRatio(splitRatio.value)
 })
 const canvasRenderMode = computed<'rendered' | 'render-debug' | 'technical'>(() =>
   styleTabFlag.value && viewMode.value === 'style'
@@ -199,7 +212,7 @@ function disposeProjectHandles() {
 
 function applyEditorState(s: Awaited<ReturnType<typeof useEditorState>>['state']) {
   viewMode.value = s.viewMode === 'style' && !styleTabFlag.value ? 'assembly' : s.viewMode
-  splitRatio.value = Number.isFinite(s.splitRatio) ? s.splitRatio : 0.55
+  splitRatio.value = clampDesktopSplitRatio(Number.isFinite(s.splitRatio) ? s.splitRatio : 0.55)
   selectedModules.value = (s.selectedModuleIds ?? []).map(moduleId => ({ id: moduleId }))
   zoomPercent.value = s.projectDesignerZoomPercent ?? 100
   cameraState.value = normalizeCameraState(s.camera)
@@ -257,9 +270,10 @@ async function loadProject(projectId: string) {
 onMounted(async () => {
   if (import.meta.client) {
     window.addEventListener('keydown', onKeydown)
+    window.addEventListener('resize', updateViewportMetrics)
     mobileViewportQuery = window.matchMedia('(max-width: 767.98px)')
-    updateMobileViewport()
-    mobileViewportQuery.addEventListener('change', updateMobileViewport)
+    updateViewportMetrics()
+    mobileViewportQuery.addEventListener('change', updateViewportMetrics)
   }
   if (import.meta.client) cutlistWipConfirmed.value = localStorage.getItem(CUTLIST_WIP_STORAGE_KEY) === 'true'
   await loadProject(id.value)
@@ -410,8 +424,11 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 onBeforeUnmount(() => {
-  if (import.meta.client) window.removeEventListener('keydown', onKeydown)
-  mobileViewportQuery?.removeEventListener('change', updateMobileViewport)
+  if (import.meta.client) {
+    window.removeEventListener('keydown', onKeydown)
+    window.removeEventListener('resize', updateViewportMetrics)
+  }
+  mobileViewportQuery?.removeEventListener('change', updateViewportMetrics)
   mobileViewportQuery = null
   if (cloudStyleSyncTimer) clearTimeout(cloudStyleSyncTimer)
   disposeProjectHandles()
@@ -574,7 +591,7 @@ async function toggleDemo() {
 function onSplitRatioUpdate(value: number) {
   if (viewMode.value === 'cutlist') return
   if (isMobileViewport.value) mobileSplitRatio.value = value
-  else splitRatio.value = value
+  else splitRatio.value = clampDesktopSplitRatio(value)
 }
 
 function confirmCutlistWipAlert() {
@@ -628,11 +645,11 @@ const projectMenuItems = computed(() => [
   { label: t('delete'), icon: 'i-lucide-trash-2', color: 'error' as const, onSelect: openDelete },
 ])
 
-const topChromeMaxWidth = computed(() => {
-  if (viewMode.value === 'style' || collapseEditorInputs.value) {
-    return 'min(40rem, calc(100vw - 24px))'
+const topChromeWidth = computed(() => {
+  if (collapseEditorInputs.value) {
+    return 'calc(100vw - 24px)'
   }
-  return `min(40rem, calc((1 - ${activeSplitRatio.value}) * 100vw - 24px))`
+  return `calc((1 - ${activeSplitRatio.value}) * 100vw - ${PROJECT_TOP_CHROME_LEFT_PX + PROJECT_TOP_CHROME_END_GAP_PX + EDITOR_SPLIT_DIVIDER_WIDTH_PX}px)`
 })
 const mobileActionTop = computed(() => isMobileViewport.value ? '7rem' : '4rem')
 const canvasChromeTeleportSelector = computed(() =>
@@ -643,7 +660,9 @@ const canvasChromeTeleportSelector = computed(() =>
 </script>
 
 <template>
-  <div class="project-page relative h-[100dvh] min-h-0 w-full">
+  <div
+    class="project-page relative h-[100dvh] min-h-0 w-full"
+  >
       <div
         v-if="project && viewMode === 'cutlist' && !cutlistWipConfirmed"
         class="fixed inset-0 z-[9999] flex h-[100dvh] w-screen cursor-pointer items-center justify-center overflow-hidden px-6 py-6 sm:px-8 sm:py-8"
@@ -683,10 +702,9 @@ const canvasChromeTeleportSelector = computed(() =>
         :split-ratio="activeSplitRatio"
         :divider-locked="viewMode === 'cutlist'"
         :collapse-inputs="collapseEditorInputs"
-        :hide-divider="styleTabFlag && viewMode === 'style'"
-        :inputs-basis="styleTabFlag && viewMode === 'style' && !isMobileViewport ? '20rem' : ''"
+        :min-inputs-px="DESKTOP_SIDEBAR_MIN_WIDTH_PX"
+        :divider-size-px="EDITOR_SPLIT_DIVIDER_WIDTH_PX"
         :reverse-on-mobile-stack="true"
-        :reverse-on-desktop="styleTabFlag && viewMode === 'style'"
         @update:split-ratio="onSplitRatioUpdate"
       >
         <!-- Inputs (left) pane -->
@@ -804,8 +822,8 @@ const canvasChromeTeleportSelector = computed(() =>
       <!-- Top-left chrome: project menu + name + view-mode pill -->
       <div
         v-if="project"
-        class="project-top-chrome pointer-events-none fixed inset-x-3 top-3 z-30 flex flex-wrap items-start gap-2 md:inset-x-auto md:left-4 md:top-4 md:flex-nowrap md:gap-2.5"
-        :style="{ '--project-top-chrome-max-width': topChromeMaxWidth }"
+        class="project-top-chrome pointer-events-none fixed inset-x-3 top-3 z-30 flex flex-wrap items-start gap-2 md:inset-x-auto md:left-4 md:top-4 md:flex-nowrap md:justify-between md:gap-2.5"
+        :style="{ '--project-top-chrome-width': topChromeWidth }"
       >
         <div class="pointer-events-auto flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full bg-muted px-2 shadow-sm sm:gap-2.5 sm:px-3 md:max-w-[min(20rem,calc(100vw-6rem))]">
           <UButton
@@ -898,14 +916,6 @@ const canvasChromeTeleportSelector = computed(() =>
             @click="viewMode = 'assembly'"
           />
           <UButton
-            size="xs"
-            :variant="viewMode === 'cutlist' ? 'solid' : 'ghost'"
-            color="neutral"
-            :label="t('cutlist')"
-            class="h-8 rounded-full transition-transform active:scale-[0.97]"
-            @click="viewMode = 'cutlist'"
-          />
-          <UButton
             v-if="styleTabFlag"
             size="xs"
             :variant="viewMode === 'style' ? 'solid' : 'ghost'"
@@ -913,6 +923,14 @@ const canvasChromeTeleportSelector = computed(() =>
             :label="t('style')"
             class="h-8 rounded-full transition-transform active:scale-[0.97]"
             @click="viewMode = 'style'"
+          />
+          <UButton
+            size="xs"
+            :variant="viewMode === 'cutlist' ? 'solid' : 'ghost'"
+            color="neutral"
+            :label="t('cutlist')"
+            class="h-8 rounded-full transition-transform active:scale-[0.97]"
+            @click="viewMode = 'cutlist'"
           />
         </div>
 
@@ -1066,8 +1084,8 @@ const canvasChromeTeleportSelector = computed(() =>
 
 @media (min-width: 768px) {
   .project-top-chrome {
-    width: var(--project-top-chrome-max-width);
-    max-width: var(--project-top-chrome-max-width);
+    width: var(--project-top-chrome-width);
+    max-width: var(--project-top-chrome-width);
   }
 
   .project-top-chrome > :first-child {

@@ -12,7 +12,7 @@ const props = withDefaults(defineProps<Props>(), {
   surface: 'floating',
 })
 
-type MobileStyleTab = 'mode' | 'parts' | 'scene'
+type MobileStyleTab = 'parts' | 'scene'
 
 const model = defineModel<PublicStyle>({ required: true })
 
@@ -44,7 +44,6 @@ const technicalLineRows = computed(() => technicalRows.value.filter(row => row.k
 const technicalSceneRows = computed(() => technicalRows.value.filter(row => row.key === 'background' || row.key === 'grid'))
 const mobileTabs = computed<{ value: MobileStyleTab, label: string }[]>(() => [
   { value: 'parts', label: isTechnical.value ? t('lines') : t('parts') },
-  { value: 'mode', label: t('mode') },
   { value: 'scene', label: t('scene') },
 ])
 const cabinetParts = computed(() =>
@@ -173,43 +172,7 @@ function resetActiveStyle() {
       >
         <div class="style-mobile-content">
           <section
-            v-if="activeMobileTab === 'mode'"
-            class="style-mobile-section style-section-mode"
-          >
-            <div class="style-section-title-row">
-              <h3 class="style-section-heading">
-                {{ t('mode') }}
-              </h3>
-              <div class="style-section-divider" />
-            </div>
-
-            <div class="style-section-controls">
-              <div class="style-control-row">
-                <span class="style-row-label">{{ t('style') }}</span>
-                <span class="style-pill-group" role="group" :aria-label="t('renderingStyle')">
-                  <button
-                    type="button"
-                    class="style-select-pill"
-                    :data-active="isTechnical ? '' : undefined"
-                    @click="setRenderStyle('technical')"
-                  >
-                    {{ t('technical') }}
-                  </button>
-                  <button
-                    type="button"
-                    class="style-select-pill"
-                    :data-active="!isTechnical ? '' : undefined"
-                    @click="setRenderStyle('rendered')"
-                  >
-                    {{ t('rendered') }}
-                  </button>
-                </span>
-              </div>
-            </div>
-          </section>
-
-          <section
-            v-else-if="activeMobileTab === 'parts'"
+            v-if="activeMobileTab === 'parts'"
             class="style-mobile-section style-section-parts"
           >
             <div class="style-section-title-row">
@@ -333,39 +296,6 @@ function resetActiveStyle() {
       <div class="style-sidebar-inner">
         <div class="style-sidebar-scroll" tabindex="0">
           <div class="style-sidebar-content">
-            <section class="style-mobile-section style-section-mode">
-              <div class="style-section-title-row">
-                <h3 class="style-section-heading">
-                  {{ t('mode') }}
-                </h3>
-                <div class="style-section-divider" />
-              </div>
-
-              <div class="style-section-controls">
-                <div class="style-control-row">
-                  <span class="style-row-label">{{ t('style') }}</span>
-                  <span class="style-pill-group" role="group" :aria-label="t('renderingStyle')">
-                    <button
-                      type="button"
-                      class="style-select-pill"
-                      :data-active="isTechnical ? '' : undefined"
-                      @click="setRenderStyle('technical')"
-                    >
-                      {{ t('technical') }}
-                    </button>
-                    <button
-                      type="button"
-                      class="style-select-pill"
-                      :data-active="!isTechnical ? '' : undefined"
-                      @click="setRenderStyle('rendered')"
-                    >
-                      {{ t('rendered') }}
-                    </button>
-                  </span>
-                </div>
-              </div>
-            </section>
-
             <section class="style-mobile-section style-section-parts">
               <div class="style-section-title-row">
                 <h3 class="style-section-heading">
@@ -611,7 +541,7 @@ function resetActiveStyle() {
 
 .style-mobile-tabs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 3px;
   flex-shrink: 0;
   border: 1px solid var(--ui-border-muted);
@@ -691,12 +621,8 @@ function resetActiveStyle() {
   order: 1;
 }
 
-.style-sidebar-content .style-section-mode {
-  order: 2;
-}
-
 .style-sidebar-content .style-section-scene {
-  order: 3;
+  order: 2;
 }
 
 .style-mobile-section {
@@ -902,7 +828,7 @@ function resetActiveStyle() {
   position: relative;
   min-height: 0;
   height: 100%;
-  padding: 4.75rem 12px 12px 8px;
+  padding: 4.75rem 1rem 12px;
 }
 
 .style-sidebar-inner {

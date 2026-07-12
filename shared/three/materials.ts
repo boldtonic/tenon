@@ -96,9 +96,8 @@ export function makeRailCutOutlineMaterial(color: number): THREE.LineBasicMateri
 // ---------------------------------------------------------------------------
 // Per-spec factory helpers (15_outline_shader spec, materials section).
 //
-// These four factories pin the verbatim numbers from `Dt_x5Iy5.js` (panel
-// classes L505–656) and the technical render-mode tokens from `BNlvPyv_.js`
-// (`bn.technical.colors.outlines = "#f59e0b"`).
+// These four factories keep the original panel material model but now use the
+// current restrained warm accent for stand-alone technical outlines.
 // ---------------------------------------------------------------------------
 
 /**
@@ -122,14 +121,14 @@ export function makeUnlitPanelMaterial(color: number): THREE.MeshBasicMaterial {
 }
 
 /**
- * Outline material that matches the technical render mode's amber outline
- * colour (`#f59e0b`, from BNlvPyv_.js `bn.technical.colors.outlines`).
+ * Outline material that matches the technical render mode's warm outline
+ * colour.
  *
  * NOTE: the actual scene outline pass is post-processing-driven via the TSL
  * pipeline in `outline.ts`. This factory is for stand-alone outline meshes
  * (e.g. ViewHelper axes, hover highlights) that need to colour-match.
  */
-export function makeOutlineMaterial(color: number = 0xf59e0b): THREE.MeshBasicMaterial {
+export function makeOutlineMaterial(color: number = 0x9a7a50): THREE.MeshBasicMaterial {
   return new THREE.MeshBasicMaterial({ color: new THREE.Color(color) })
 }
 

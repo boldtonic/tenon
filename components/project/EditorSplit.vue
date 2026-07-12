@@ -6,9 +6,9 @@ interface Props {
   dividerLocked?: boolean
   collapseInputs?: boolean
   reverseOnMobileStack?: boolean
-  reverseOnDesktop?: boolean
-  hideDivider?: boolean
-  inputsBasis?: string
+  minInputsPx?: number
+  minPreviewPx?: number
+  dividerSizePx?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -16,9 +16,9 @@ const props = withDefaults(defineProps<Props>(), {
   dividerLocked: false,
   collapseInputs: false,
   reverseOnMobileStack: false,
-  reverseOnDesktop: false,
-  hideDivider: false,
-  inputsBasis: '',
+  minInputsPx: 112,
+  minPreviewPx: 112,
+  dividerSizePx: 9,
 })
 
 const emit = defineEmits<{
@@ -29,11 +29,24 @@ const containerRef = ref<HTMLElement | null>(null)
 const isDragging = ref(false)
 const isStacked = ref(false)
 const internalRatio = ref(props.splitRatio)
-const MIN_PANE_PX = 112
+const STACKED_MIN_PANE_PX = 112
 
 let startClient = 0
 let startInputPx = 0
 let mediaQuery: MediaQueryList | null = null
+
+function paneLimits(axisSize: number) {
+  const minInputTarget = isStacked.value ? STACKED_MIN_PANE_PX : props.minInputsPx
+  const minPreviewTarget = isStacked.value ? STACKED_MIN_PANE_PX : props.minPreviewPx
+  let minInput = Math.max(0, Math.min(minInputTarget, axisSize))
+  let maxInput = Math.max(0, axisSize - Math.max(0, minPreviewTarget))
+  if (minInput > maxInput) {
+    const balanced = axisSize / 2
+    minInput = balanced
+    maxInput = balanced
+  }
+  return { minInput, maxInput }
+}
 
 watch(
   () => props.splitRatio,
@@ -85,9 +98,9 @@ function onPointerMove(event: PointerEvent) {
   const rawDelta = (isStacked.value ? event.clientY : event.clientX) - startClient
   const reversed = isStacked.value && props.reverseOnMobileStack
   const delta = reversed ? -rawDelta : rawDelta
-  const minPane = Math.min(MIN_PANE_PX, axisSize / 2)
   const inputPx = startInputPx + delta
-  const clampedInputPx = Math.min(Math.max(inputPx, minPane), axisSize - minPane)
+  const { minInput, maxInput } = paneLimits(axisSize)
+  const clampedInputPx = Math.min(Math.max(inputPx, minInput), maxInput)
   internalRatio.value = 1 - clampedInputPx / axisSize
   emit('update:splitRatio', internalRatio.value)
 }
@@ -105,32 +118,32 @@ const inputsStyle = computed(() => {
   if (props.collapseInputs) {
     return { flex: '0 0 0', minWidth: 0, overflow: 'hidden' }
   }
-  if (props.inputsBasis && !isStacked.value) {
-    return { flex: `0 0 ${props.inputsBasis}`, minWidth: 0, maxWidth: '100%' }
-  }
-  return { flex: '1 1 0' }
+  return { flex: '1 1 0', minWidth: isStacked.value ? 0 : `${props.minInputsPx}px` }
 })
 
 const previewStyle = computed(() => {
   if (props.collapseInputs) {
     return { flex: '1 1 100%', minWidth: 0, maxWidth: '100%' }
   }
-  if (props.inputsBasis && !isStacked.value) {
-    return { flex: '1 1 0', minWidth: 0 }
+  return {
+    flex: `0 0 ${internalRatio.value * 100}%`,
+    minWidth: isStacked.value ? 0 : `${props.minPreviewPx}px`,
   }
-  return { flex: `0 0 ${internalRatio.value * 100}%` }
 })
+
+const splitStyle = computed(() => ({
+  '--editor-split-divider-size': `${props.dividerSizePx}px`,
+}))
 </script>
 
 <template>
   <div
     ref="containerRef"
     class="editor-split"
+    :style="splitStyle"
     :class="{
       'is-dragging': isDragging,
-      'editor-split--inputs-collapsed': props.collapseInputs,
       'editor-split--mobile-reverse': props.reverseOnMobileStack,
-      'editor-split--desktop-reverse': props.reverseOnDesktop,
     }"
   >
     <div
@@ -146,7 +159,7 @@ const previewStyle = computed(() => {
     </div>
 
     <div
-      v-show="!props.collapseInputs && !props.hideDivider"
+      v-show="!props.collapseInputs"
       class="divider"
       :class="{ 'divider-locked': props.dividerLocked }"
       @pointerdown.prevent="beginDrag"
@@ -190,10 +203,6 @@ const previewStyle = computed(() => {
     flex-direction: row;
   }
 
-  .editor-split.editor-split--desktop-reverse,
-  .editor-split.editor-split--mobile-reverse.editor-split--desktop-reverse {
-    flex-direction: row-reverse;
-  }
 }
 .editor-split.is-dragging {
   cursor: row-resize;
@@ -227,7 +236,7 @@ const previewStyle = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 9px;
+  flex: 0 0 var(--editor-split-divider-size);
   cursor: row-resize;
   touch-action: none;
   z-index: 10;
