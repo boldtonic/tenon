@@ -92,6 +92,7 @@ function onRestartConfirm() {
   <div
     ref="rootRef"
     class="product-pill pointer-events-auto flex items-center rounded-full bg-elevated shadow-md ring-1 ring-default/50"
+    :class="`product-pill--level-${level}`"
     @pointerenter="onPointerEnter"
     @pointerleave="onPointerLeave"
   >
@@ -104,6 +105,15 @@ function onRestartConfirm() {
     >
       <span class="flex size-6 items-center justify-center rounded-full bg-primary text-[12px] font-bold text-inverted">T</span>
     </button>
+
+    <div
+      v-if="level === 0"
+      class="product-pill-mini flex items-center"
+      aria-hidden="true"
+    >
+      <span class="product-pill-separator" />
+      <span class="product-pill-mini-dots">···</span>
+    </div>
 
     <div
       class="product-pill-items flex items-center gap-1 overflow-hidden"
@@ -196,7 +206,43 @@ function onRestartConfirm() {
 
 <style scoped>
 .product-pill {
-  padding: 4px;
+  min-height: 2.25rem;
+  min-width: 5.25rem;
+  padding: 3px 7px 3px 3px;
+  transform-origin: left center;
+  transition:
+    min-width 0.22s ease,
+    padding-right 0.22s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.product-pill--level-1,
+.product-pill--level-2 {
+  min-width: 0;
+  padding-right: 4px;
+}
+
+.product-pill-mini {
+  gap: 0.55rem;
+  padding-right: 0.2rem;
+  color: var(--ui-text-muted);
+}
+
+.product-pill-separator {
+  display: block;
+  width: 1px;
+  height: 1rem;
+  background: var(--ui-border);
+}
+
+.product-pill-mini-dots {
+  min-width: 1.35rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  transform: translateY(-1px);
 }
 
 .product-pill-items {

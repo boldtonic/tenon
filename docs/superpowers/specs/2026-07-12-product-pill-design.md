@@ -9,7 +9,7 @@ Sustituir el hueco que hoy ocupa la cápsula de Nuxt DevTools (solo visible en d
 
 ## Alcance v1
 
-- Visible **solo en el editor** (`/project/:id`), anclado abajo al centro del pane del lienzo 3D.
+- Visible **solo en el editor** (`/project/:id`), anclado abajo a la izquierda del pane del lienzo 3D, usando el hueco visual de la cápsula de DevTools.
 - Acciones: **Tema** (claro/oscuro), **Idioma** (ES/EN), **Reiniciar proyecto**, **Inicio**.
 - Escritorio y móvil, sobre lienzo claro y oscuro.
 
@@ -60,7 +60,7 @@ Cierre: al salir el cursor (si se abrió por hover) o tap/clic fuera (si se fij�
 - **Nuevo** `components/app/ProductPill.vue` — el pill completo (estados, expansión, acciones). Montado desde `pages/project/[id].vue`.
 - **`shared/i18n/ui-copy.ts`**: `ACTIVE_UI_LOCALE` deja de ser literal fijo y se inicializa al cargar el módulo desde `localStorage` (`tenon-locale`), validando contra los locales disponibles, con fallback `'es'` y guarda para entornos sin `localStorage`. La app es SPA (`ssr: false`), así que no hay riesgo de hidratación.
 - Copys nuevos del pill añadidos a `ui-copy.ts` en ES y EN (incluida la confirmación de reinicio).
-- **Sin cambios** en Nuxt DevTools: su cápsula es arrastrable y recuerda posición; en dev se aparta una vez a mano.
+- Nuxt DevTools queda desactivado por defecto para no crear dos pills; puede activarse explícitamente con `NUXT_DEVTOOLS=true` cuando haga falta depurar Nuxt.
 
 ## Verificación
 

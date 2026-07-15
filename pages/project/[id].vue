@@ -812,7 +812,7 @@ const canvasChromeTeleportSelector = computed(() =>
                 />
                 <ProductPill
                   v-if="docRef"
-                  class="absolute bottom-3 left-1/2 z-20 -translate-x-1/2"
+                  class="absolute bottom-3 left-3 z-20"
                   @restart="onPillRestart"
                 />
               </div>

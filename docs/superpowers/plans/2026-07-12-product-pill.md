@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Menú flotante de producto abajo al centro del lienzo 3D del editor: tema (claro/oscuro), idioma (ES/EN), reiniciar proyecto y volver al inicio, con modelo híbrido de expansión en línea.
+**Goal:** Menú flotante de producto abajo a la izquierda del lienzo 3D del editor, reutilizando el lenguaje de mini-pill que antes ocupaba Nuxt DevTools: tema (claro/oscuro), idioma (ES/EN), reiniciar proyecto y volver al inicio, con modelo híbrido de expansión en línea.
 
 **Architecture:** Componente autocontenido `ProductPill.vue` montado en el pane de preview de `pages/project/[id].vue`. El idioma se resuelve al arrancar desde `localStorage` (la app es SPA, `ssr: false`) y cambiar idioma recarga la página; el tema usa el `useColorMode` ya configurado; reiniciar delega en la página, que reemplaza el documento Yjs con `replaceFurnitureDoc`.
 
@@ -497,7 +497,7 @@ En el template, dentro de `<div class="relative h-full min-h-0 w-full">` (línea
 ```html
                 <ProductPill
                   v-if="docRef"
-                  class="absolute bottom-3 left-1/2 z-20 -translate-x-1/2"
+                  class="absolute bottom-3 left-3 z-20"
                   @restart="onPillRestart"
                 />
 ```
@@ -524,7 +524,7 @@ Servidor: usar el dev server existente en `127.0.0.1:3003` (config `tenon-dev` d
 
 - [ ] **Paso 1: Escritorio — estados y cierre**
 
-Abrir un proyecto. Verificar: pill colapsado abajo-centro del lienzo; hover ~150 ms abre nivel 1 (tema + ES|EN + "···"); "···" pasa a nivel 2 (reiniciar + inicio, con etiquetas); mover el ratón fuera sin haber hecho clic → colapsa; clic en la T lo fija y entonces solo cierra con clic fuera o Escape.
+Abrir un proyecto. Verificar: pill colapsado abajo-izquierda del lienzo, sin duplicarse con Nuxt DevTools; hover ~150 ms abre nivel 1 (tema + ES|EN + "···"); "···" pasa a nivel 2 (reiniciar + inicio, con etiquetas); mover el ratón fuera sin haber hecho clic → colapsa; clic en la T lo fija y entonces solo cierra con clic fuera o Escape.
 
 - [ ] **Paso 2: Tema**
 
