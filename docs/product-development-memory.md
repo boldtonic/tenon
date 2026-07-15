@@ -84,12 +84,11 @@ Important recent changes in this working tree:
   - 3D rendered defaults: white lacquer body and soft gray fronts.
   - Added material presets for soft gray lacquer and graphite lacquer.
 - Product pill v1 added to the project canvas:
-  - Collapsed product entry point with inline expansion, anchored in the old bottom-center DevTools-style pill slot.
+  - Collapsed product entry point with inline expansion.
   - Theme switch, ES/EN locale switch, restart project, and home action.
   - Restart clears the furniture document while preserving project identity.
   - Locale preference persists in `tenon-locale`; theme preference persists through the existing color-mode storage.
   - Current known polish items are non-blocking: closing animation, re-click behavior on the collapsed mark, and focus restoration after Escape.
-  - Nuxt DevTools is disabled by default so the product pill can own that visual slot; enable it explicitly with `NUXT_DEVTOOLS=true` when debugging Nuxt internals.
 
 Current status of handles/pulls:
 

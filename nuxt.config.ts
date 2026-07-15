@@ -6,7 +6,7 @@ export default defineNuxtConfig({
   future: { compatibilityVersion: 4 },
   srcDir: '.',
   ssr: false,
-  devtools: { enabled: process.env.NUXT_DEVTOOLS === 'true' },
+  devtools: { enabled: true },
 
   typescript: {
     tsConfig: {

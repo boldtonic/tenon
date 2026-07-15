@@ -91,99 +91,96 @@ function onRestartConfirm() {
 <template>
   <div
     ref="rootRef"
-    class="product-pill-anchor pointer-events-auto"
-    :class="`product-pill-anchor--level-${level}`"
+    class="product-pill pointer-events-auto flex items-center rounded-full bg-elevated shadow-md ring-1 ring-default/50"
     @pointerenter="onPointerEnter"
     @pointerleave="onPointerLeave"
   >
-    <div class="product-pill flex items-center rounded-full bg-elevated shadow-md ring-1 ring-default/50">
-      <button
-        type="button"
-        class="flex size-8 shrink-0 items-center justify-center rounded-full transition-transform active:scale-[0.95]"
-        :aria-label="t('pillMenuAria')"
-        :aria-expanded="level > 0"
-        @click="onMarkClick"
-      >
-        <span class="flex size-6 items-center justify-center rounded-full bg-primary text-[12px] font-bold text-inverted">T</span>
-      </button>
+    <button
+      type="button"
+      class="flex size-8 shrink-0 items-center justify-center rounded-full transition-transform active:scale-[0.95]"
+      :aria-label="t('pillMenuAria')"
+      :aria-expanded="level > 0"
+      @click="onMarkClick"
+    >
+      <span class="flex size-6 items-center justify-center rounded-full bg-primary text-[12px] font-bold text-inverted">T</span>
+    </button>
 
-      <div
-        class="product-pill-items flex items-center gap-1 overflow-hidden"
-        :class="level > 0 ? 'product-pill-items--open' : ''"
-      >
-        <template v-if="level > 0">
-          <UButton
-            :icon="isDark ? 'i-lucide-sun' : 'i-lucide-moon'"
-            size="xs"
-            color="neutral"
-            variant="ghost"
-            class="rounded-full transition-transform active:scale-[0.95]"
-            :aria-label="themeAriaLabel"
-            @click="toggleTheme"
-          />
+    <div
+      class="product-pill-items flex items-center gap-1 overflow-hidden"
+      :class="level > 0 ? 'product-pill-items--open' : ''"
+    >
+      <template v-if="level > 0">
+        <UButton
+          :icon="isDark ? 'i-lucide-sun' : 'i-lucide-moon'"
+          size="xs"
+          color="neutral"
+          variant="ghost"
+          class="rounded-full transition-transform active:scale-[0.95]"
+          :aria-label="themeAriaLabel"
+          @click="toggleTheme"
+        />
 
-          <span
-            class="flex rounded-full bg-muted p-0.5"
-            role="group"
-            :aria-label="t('pillLanguageAria')"
+        <span
+          class="flex rounded-full bg-muted p-0.5"
+          role="group"
+          :aria-label="t('pillLanguageAria')"
+        >
+          <button
+            type="button"
+            class="min-h-6 rounded-full px-2 text-[11px] font-semibold transition-colors"
+            :class="ACTIVE_UI_LOCALE === 'es' ? 'bg-elevated text-highlighted shadow-sm' : 'text-muted hover:text-highlighted'"
+            :aria-pressed="ACTIVE_UI_LOCALE === 'es'"
+            @click="setLocale('es')"
           >
-            <button
-              type="button"
-              class="min-h-6 rounded-full px-2 text-[11px] font-semibold transition-colors"
-              :class="ACTIVE_UI_LOCALE === 'es' ? 'bg-elevated text-highlighted shadow-sm' : 'text-muted hover:text-highlighted'"
-              :aria-pressed="ACTIVE_UI_LOCALE === 'es'"
-              @click="setLocale('es')"
-            >
-              ES
-            </button>
-            <button
-              type="button"
-              class="min-h-6 rounded-full px-2 text-[11px] font-semibold transition-colors"
-              :class="ACTIVE_UI_LOCALE === 'en' ? 'bg-elevated text-highlighted shadow-sm' : 'text-muted hover:text-highlighted'"
-              :aria-pressed="ACTIVE_UI_LOCALE === 'en'"
-              @click="setLocale('en')"
-            >
-              EN
-            </button>
-          </span>
+            ES
+          </button>
+          <button
+            type="button"
+            class="min-h-6 rounded-full px-2 text-[11px] font-semibold transition-colors"
+            :class="ACTIVE_UI_LOCALE === 'en' ? 'bg-elevated text-highlighted shadow-sm' : 'text-muted hover:text-highlighted'"
+            :aria-pressed="ACTIVE_UI_LOCALE === 'en'"
+            @click="setLocale('en')"
+          >
+            EN
+          </button>
+        </span>
 
+        <UButton
+          v-if="level === 1"
+          icon="i-lucide-ellipsis"
+          size="xs"
+          color="neutral"
+          variant="ghost"
+          class="rounded-full transition-transform active:scale-[0.95]"
+          :aria-label="t('pillMoreAria')"
+          @click="openMore"
+        />
+
+        <template v-else>
           <UButton
-            v-if="level === 1"
-            icon="i-lucide-ellipsis"
+            icon="i-lucide-rotate-ccw"
+            size="xs"
+            color="error"
+            variant="ghost"
+            class="rounded-full transition-transform active:scale-[0.95]"
+            :aria-label="t('pillRestart')"
+            @click="confirmOpen = true"
+          >
+            <span class="hidden md:inline">{{ t('pillRestart') }}</span>
+          </UButton>
+          <UButton
+            icon="i-lucide-house"
             size="xs"
             color="neutral"
             variant="ghost"
+            to="/"
             class="rounded-full transition-transform active:scale-[0.95]"
-            :aria-label="t('pillMoreAria')"
-            @click="openMore"
-          />
-
-          <template v-else>
-            <UButton
-              icon="i-lucide-rotate-ccw"
-              size="xs"
-              color="error"
-              variant="ghost"
-              class="rounded-full transition-transform active:scale-[0.95]"
-              :aria-label="t('pillRestart')"
-              @click="confirmOpen = true"
-            >
-              <span class="hidden md:inline">{{ t('pillRestart') }}</span>
-            </UButton>
-            <UButton
-              icon="i-lucide-house"
-              size="xs"
-              color="neutral"
-              variant="ghost"
-              to="/"
-              class="rounded-full transition-transform active:scale-[0.95]"
-              :aria-label="t('home')"
-            >
-              <span class="hidden md:inline">{{ t('home') }}</span>
-            </UButton>
-          </template>
+            :aria-label="t('home')"
+          >
+            <span class="hidden md:inline">{{ t('home') }}</span>
+          </UButton>
         </template>
-      </div>
+      </template>
     </div>
 
     <AppConfirmDialog
@@ -198,27 +195,8 @@ function onRestartConfirm() {
 </template>
 
 <style scoped>
-.product-pill-anchor {
-  --product-pill-rest-y: 1.25rem;
-  --product-pill-open-y: -0.75rem;
-}
-
 .product-pill {
-  min-height: 3rem;
-  min-width: 3rem;
   padding: 4px;
-  transform: translateY(var(--product-pill-rest-y));
-  transform-origin: bottom center;
-  transition:
-    min-width 0.22s ease,
-    transform 0.22s ease,
-    box-shadow 0.18s ease,
-    background-color 0.18s ease;
-}
-
-.product-pill-anchor--level-1 .product-pill,
-.product-pill-anchor--level-2 .product-pill {
-  transform: translateY(var(--product-pill-open-y));
 }
 
 .product-pill-items {

@@ -60,7 +60,7 @@ Cierre: al salir el cursor (si se abrió por hover) o tap/clic fuera (si se fij�
 - **Nuevo** `components/app/ProductPill.vue` — el pill completo (estados, expansión, acciones). Montado desde `pages/project/[id].vue`.
 - **`shared/i18n/ui-copy.ts`**: `ACTIVE_UI_LOCALE` deja de ser literal fijo y se inicializa al cargar el módulo desde `localStorage` (`tenon-locale`), validando contra los locales disponibles, con fallback `'es'` y guarda para entornos sin `localStorage`. La app es SPA (`ssr: false`), así que no hay riesgo de hidratación.
 - Copys nuevos del pill añadidos a `ui-copy.ts` en ES y EN (incluida la confirmación de reinicio).
-- Nuxt DevTools queda desactivado por defecto para que el producto pueda ocupar ese mismo hueco visual. Se puede activar explícitamente con `NUXT_DEVTOOLS=true` cuando haga falta depurar Nuxt.
+- **Sin cambios** en Nuxt DevTools: su cápsula es arrastrable y recuerda posición; en dev se aparta una vez a mano.
 
 ## Verificación
 
