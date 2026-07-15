@@ -135,10 +135,9 @@ function doorSeamStyle(): Record<string, string> {
   }
 }
 
-function drawerPullStyle(mod: FurnitureModule, drawerIndex: number, side: 'left' | 'right'): Record<string, string> {
+function drawerPullBarStyle(mod: FurnitureModule, drawerIndex: number): Record<string, string> {
   const config = furnitureConfig.value
   const d = pullDiameterPx()
-  const r = d / 2
   const drawerCount = mod.drawerCount ?? 1
   const topM = (drawerIndex / drawerCount) * mod.height
   const bottomM = ((drawerIndex - 1) / drawerCount) * mod.height
@@ -148,12 +147,16 @@ function drawerPullStyle(mod: FurnitureModule, drawerIndex: number, side: 'left'
   if (centreM < minCentre) centreM = minCentre
   if (centreM > maxCentre) centreM = maxCentre
   const pct = (centreM / mod.height) * 100
-  const offset = side === 'left' ? -pullPairHalfGapPx() : pullPairHalfGapPx()
+  const height = Math.max(2, Math.round(d * 0.55))
+  const width = Math.max(
+    Math.round(d * 2.6),
+    Math.round((config.pullHolePairGap + config.pullHoleDiameter * 1.15) * PX_PER_M),
+  )
   return {
-    width: `${d}px`,
-    height: `${d}px`,
-    left: `calc(50% + ${offset - r}px)`,
-    bottom: `calc(${pct}% - ${r}px)`,
+    width: `${width}px`,
+    height: `${height}px`,
+    left: `calc(50% - ${width / 2}px)`,
+    bottom: `calc(${pct}% - ${height / 2}px)`,
   }
 }
 
@@ -219,25 +222,21 @@ function moduleClass(mod: FurnitureModule): string {
                       :key="`${mod.id}-dr-${i}`"
                     >
                       <div
-                        class="absolute rounded-full bg-[var(--ui-bg)]"
-                        :style="drawerPullStyle(mod, i, 'left')"
-                      />
-                      <div
-                        class="absolute rounded-full bg-[var(--ui-bg)]"
-                        :style="drawerPullStyle(mod, i, 'right')"
+                        class="pull-bar-2d absolute"
+                        :style="drawerPullBarStyle(mod, i)"
                       />
                     </template>
                   </template>
 
                   <div
                     v-else-if="mod.type === 'left-door'"
-                    class="absolute rounded-full bg-[var(--ui-bg)]"
+                    class="pull-knob-2d absolute rounded-full"
                     :style="leftDoorPullStyle()"
                   />
 
                   <div
                     v-else-if="mod.type === 'right-door'"
-                    class="absolute rounded-full bg-[var(--ui-bg)]"
+                    class="pull-knob-2d absolute rounded-full"
                     :style="rightDoorPullStyle()"
                   />
 
@@ -247,11 +246,11 @@ function moduleClass(mod: FurnitureModule): string {
                       :style="doorSeamStyle()"
                     />
                     <div
-                      class="absolute rounded-full bg-[var(--ui-bg)]"
+                      class="pull-knob-2d absolute rounded-full"
                       :style="doorsPullStyle('left')"
                     />
                     <div
-                      class="absolute rounded-full bg-[var(--ui-bg)]"
+                      class="pull-knob-2d absolute rounded-full"
                       :style="doorsPullStyle('right')"
                     />
                   </template>
@@ -288,5 +287,20 @@ function moduleClass(mod: FurnitureModule): string {
 .preview-shelf {
   background-color: transparent;
   border: 1px solid var(--ui-primary);
+}
+.pull-knob-2d {
+  background: #34312c;
+  border: 1px solid rgb(255 255 255 / 0.18);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.16),
+    0 1px 2px rgb(0 0 0 / 0.28);
+}
+.pull-bar-2d {
+  background: #34312c;
+  border: 1px solid rgb(255 255 255 / 0.16);
+  border-radius: 9999px;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.14),
+    0 1px 2px rgb(0 0 0 / 0.28);
 }
 </style>

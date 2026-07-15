@@ -1,6 +1,6 @@
 # Product Development Memory
 
-Last updated: 2026-07-13
+Last updated: 2026-07-15
 
 ## Purpose
 
@@ -92,12 +92,15 @@ Important recent changes in this working tree:
 
 Current status of handles/pulls:
 
-- Physical pomos/tiradores are not implemented yet.
-- Existing code already has technical pull-hole/cutout logic for drawer and door fronts.
-- Suggested product split for v1:
+- Physical pomos/tiradores v1 are implemented in the 3D assembly render.
+- Drawers render a short horizontal graphite pull using the existing pair of pull-hole positions as supports.
+- Single-door fronts render a small graphite knob at the existing pull-hole position.
+- The 2D editor/preview now uses the same visual language: drawer bars and door knobs instead of generic hole dots.
+- Technical/cutlist geometry still uses the existing pull-hole/cutout operations; the v1 handle hardware is visual only and does not yet alter manufacturing output.
+- Suggested future product split remains:
   - Diseño controls whether handles exist and their placement/orientation.
   - Estilo controls global handle type and finish.
-  - Default should be handles enabled for realism, with a simple premium choice first.
+  - Default should remain handles enabled for realism, with premium simple options first.
 
 ## Current Suggested Roadmap
 

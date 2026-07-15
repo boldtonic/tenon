@@ -239,9 +239,8 @@ function doorDividerStyle(): Record<string, string> {
   }
 }
 
-function drawerPullStyle(mod: FurnitureModule, drawerIndex: number, side: 'left' | 'right'): Record<string, string> {
+function drawerPullBarStyle(mod: FurnitureModule, drawerIndex: number): Record<string, string> {
   const d = pullDiameterPx()
-  const r = d / 2
   const total = drawerCount(mod)
   const topM = (drawerIndex / total) * mod.height
   const bottomM = ((drawerIndex - 1) / total) * mod.height
@@ -251,13 +250,16 @@ function drawerPullStyle(mod: FurnitureModule, drawerIndex: number, side: 'left'
   if (centreM < minCentre) centreM = minCentre
   if (centreM > maxCentre) centreM = maxCentre
   const pct = (centreM / mod.height) * 100
-  const halfGap = pullPairHalfGapPx()
-  const offset = side === 'left' ? -halfGap : halfGap
+  const height = Math.max(3, Math.round(d * 0.55))
+  const width = Math.max(
+    Math.round(d * 2.6),
+    Math.round((props.config.pullHolePairGap + props.config.pullHoleDiameter * 1.15) * pxPerMeter.value),
+  )
   return {
-    width: `${d}px`,
-    height: `${d}px`,
-    left: `calc(50% + ${offset - r}px)`,
-    bottom: `calc(${pct}% - ${r}px)`,
+    width: `${width}px`,
+    height: `${height}px`,
+    left: `calc(50% - ${width / 2}px)`,
+    bottom: `calc(${pct}% - ${height / 2}px)`,
   }
 }
 
@@ -560,29 +562,21 @@ function addButtonMarginTop(boundaryIndex: number): string {
                                 :key="`${mod.id}-dr-${i}`"
                               >
                                 <div
-                                  class="absolute rounded-full"
-                                  :class="visualBgClass()"
-                                  :style="drawerPullStyle(mod, i, 'left')"
-                                />
-                                <div
-                                  class="absolute rounded-full"
-                                  :class="visualBgClass()"
-                                  :style="drawerPullStyle(mod, i, 'right')"
+                                  class="pull-bar-2d absolute"
+                                  :style="drawerPullBarStyle(mod, i)"
                                 />
                               </template>
                             </template>
 
                             <div
                               v-else-if="mod.type === 'left-door'"
-                              class="absolute rounded-full"
-                              :class="visualBgClass()"
+                              class="pull-knob-2d absolute rounded-full"
                               :style="leftDoorPullStyle()"
                             />
 
                             <div
                               v-else-if="mod.type === 'right-door'"
-                              class="absolute rounded-full"
-                              :class="visualBgClass()"
+                              class="pull-knob-2d absolute rounded-full"
                               :style="rightDoorPullStyle()"
                             />
 
@@ -593,13 +587,11 @@ function addButtonMarginTop(boundaryIndex: number): string {
                                 :style="doorDividerStyle()"
                               />
                               <div
-                                class="absolute rounded-full"
-                                :class="visualBgClass()"
+                                class="pull-knob-2d absolute rounded-full"
                                 :style="doorsPullStyle('left')"
                               />
                               <div
-                                class="absolute rounded-full"
-                                :class="visualBgClass()"
+                                class="pull-knob-2d absolute rounded-full"
                                 :style="doorsPullStyle('right')"
                               />
                             </template>
@@ -836,6 +828,21 @@ function addButtonMarginTop(boundaryIndex: number): string {
 }
 .module-measurement-shelf {
   color: var(--ui-primary);
+}
+.pull-knob-2d {
+  background: #34312c;
+  border: 1px solid rgb(255 255 255 / 0.18);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.16),
+    0 1px 2px rgb(0 0 0 / 0.28);
+}
+.pull-bar-2d {
+  background: #34312c;
+  border: 1px solid rgb(255 255 255 / 0.16);
+  border-radius: 9999px;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.14),
+    0 1px 2px rgb(0 0 0 / 0.28);
 }
 .editor-touch-target,
 .column-resize-hit {

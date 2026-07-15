@@ -51,6 +51,14 @@ const POSITION_SETTLE_EPSILON_SQ = 1e-8
 const ROTATION_SETTLE_EPSILON = 1e-5
 const TECHNICAL_OVERLAY_OFFSET = 6e-4
 const TECHNICAL_HOLE_SEGMENTS = 32
+const PULL_HANDLE_COLOR = 0x34312c
+const PULL_HANDLE_MIN_DIAMETER = 0.024
+const PULL_HANDLE_MAX_DIAMETER = 0.038
+const PULL_HANDLE_STEM_RATIO = 0.22
+const PULL_HANDLE_STEM_DEPTH = 0.011
+const PULL_HANDLE_FACE_GAP = 0.0012
+const PULL_BAR_MIN_LENGTH = 0.065
+const PULL_BAR_MAX_LENGTH = 0.14
 
 interface ViewHelperOptions {
   viewportPixels?: number
@@ -375,12 +383,21 @@ function disposeObjectMaterial(material: THREE.Material | THREE.Material[]) {
 }
 
 function disposeObjectTree(object: THREE.Object3D) {
+  const geometries = new Set<THREE.BufferGeometry>()
+  const materials = new Set<THREE.Material>()
   object.traverse((child) => {
     const geometry = (child as THREE.Mesh | THREE.LineSegments).geometry
-    if (geometry) geometry.dispose()
+    if (geometry) geometries.add(geometry)
     const material = (child as THREE.Mesh | THREE.LineSegments).material
-    if (material) disposeObjectMaterial(material)
+    if (Array.isArray(material)) {
+      for (const mat of material) materials.add(mat)
+    }
+    else if (material) {
+      materials.add(material)
+    }
   })
+  for (const geometry of geometries) geometry.dispose()
+  for (const material of materials) material.dispose()
 }
 
 function smoothstep(edge0: number, edge1: number, x: number): number {
@@ -661,6 +678,125 @@ function operationCenter(op: PanelOperation) {
   }
 }
 
+function isPullHoleOperation(panel: CompiledPanel, op: PanelOperation): boolean {
+  return op.operationType === 'through-hole'
+    && op.targetPanelKey === panel.key
+    && op.id.startsWith('op:pull-hole:')
+    && (op.diameter ?? 0) > 0
+}
+
+function pullHandleDiameter(panel: CompiledPanel, op: PanelOperation): number {
+  const requested = Math.max(PULL_HANDLE_MIN_DIAMETER, (op.diameter ?? PULL_HANDLE_MIN_DIAMETER) * 1.18)
+  const maxByPanel = Math.max(PULL_HANDLE_MIN_DIAMETER, Math.min(panel.width, panel.height) * 0.4)
+  return Math.min(PULL_HANDLE_MAX_DIAMETER, maxByPanel, requested)
+}
+
+function makePullHandleMaterial(): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({
+    color: new THREE.Color(PULL_HANDLE_COLOR),
+    metalness: 0.54,
+    roughness: 0.46,
+  })
+}
+
+function makePullHandleStemGeometry(radius: number, depth: number): THREE.CylinderGeometry {
+  const geometry = new THREE.CylinderGeometry(radius, radius * 0.92, depth, 24)
+  geometry.rotateX(Math.PI / 2)
+  addOutlineExcludeAttribute(geometry, 0)
+  return geometry
+}
+
+function makePullHandleCapGeometry(radius: number): THREE.SphereGeometry {
+  const geometry = new THREE.SphereGeometry(radius, 32, 16)
+  addOutlineExcludeAttribute(geometry, 0)
+  return geometry
+}
+
+function makePullBarGeometry(radius: number, length: number): THREE.CylinderGeometry {
+  const geometry = new THREE.CylinderGeometry(radius, radius, length, 32)
+  geometry.rotateZ(Math.PI / 2)
+  addOutlineExcludeAttribute(geometry, 0)
+  return geometry
+}
+
+function addPullHandle(group: THREE.Group, panel: CompiledPanel, op: PanelOperation) {
+  const center = operationCenter(op)
+  const diameter = pullHandleDiameter(panel, op)
+  const capRadius = diameter / 2
+  const stemRadius = Math.max(0.004, diameter * PULL_HANDLE_STEM_RATIO)
+  const faceZ = panel.thickness / 2 + PULL_HANDLE_FACE_GAP
+  const material = makePullHandleMaterial()
+
+  const stem = new THREE.Mesh(makePullHandleStemGeometry(stemRadius, PULL_HANDLE_STEM_DEPTH), material)
+  stem.position.set(center.x, center.y, faceZ + PULL_HANDLE_STEM_DEPTH / 2)
+  stem.castShadow = true
+  stem.receiveShadow = true
+  stem.name = `pull-handle-stem:${op.id}`
+  group.add(stem)
+
+  const cap = new THREE.Mesh(makePullHandleCapGeometry(capRadius), material)
+  cap.scale.z = 0.5
+  cap.position.set(center.x, center.y, faceZ + PULL_HANDLE_STEM_DEPTH + capRadius * 0.38)
+  cap.castShadow = true
+  cap.receiveShadow = true
+  cap.name = `pull-handle-cap:${op.id}`
+  group.add(cap)
+}
+
+function addDrawerBarHandle(group: THREE.Group, panel: CompiledPanel, ops: PanelOperation[]) {
+  const centers = ops
+    .map(op => ({ op, center: operationCenter(op) }))
+    .sort((a, b) => a.center.x - b.center.x)
+  const left = centers[0]
+  const right = centers[centers.length - 1]
+  if (!left || !right) return
+
+  const baseDiameter = Math.max(
+    pullHandleDiameter(panel, left.op),
+    pullHandleDiameter(panel, right.op),
+  )
+  const span = Math.abs(right.center.x - left.center.x)
+  const maxByPanel = Math.max(PULL_BAR_MIN_LENGTH, panel.width * 0.5)
+  const length = Math.min(PULL_BAR_MAX_LENGTH, maxByPanel, Math.max(PULL_BAR_MIN_LENGTH, span + baseDiameter * 1.15))
+  const radius = Math.max(0.0045, Math.min(0.007, baseDiameter * 0.18))
+  const stemRadius = radius * 0.72
+  const faceZ = panel.thickness / 2 + PULL_HANDLE_FACE_GAP
+  const barZ = faceZ + PULL_HANDLE_STEM_DEPTH + radius * 0.8
+  const material = makePullHandleMaterial()
+
+  for (const { op, center } of [left, right]) {
+    const stemDepth = Math.max(0.004, barZ - faceZ)
+    const stem = new THREE.Mesh(makePullHandleStemGeometry(stemRadius, stemDepth), material)
+    stem.position.set(center.x, center.y, faceZ + stemDepth / 2)
+    stem.castShadow = true
+    stem.receiveShadow = true
+    stem.name = `pull-bar-stem:${op.id}`
+    group.add(stem)
+  }
+
+  const bar = new THREE.Mesh(makePullBarGeometry(radius, length), material)
+  bar.position.set((left.center.x + right.center.x) / 2, (left.center.y + right.center.y) / 2, barZ)
+  bar.castShadow = true
+  bar.receiveShadow = true
+  bar.name = `pull-bar:${panel.key}`
+  group.add(bar)
+}
+
+function addPhysicalPullHandles(group: THREE.Group, panel: CompiledPanel) {
+  if (props.renderMode === 'technical') return
+  if (panel.orientation !== 'vertical-xy') return
+  if (panel.role !== 'door-front' && panel.role !== 'drawer-front') return
+
+  const pullOps = panel.operations.filter(op => isPullHoleOperation(panel, op))
+  if (pullOps.length === 0) return
+
+  const handles = new THREE.Group()
+  handles.name = `pull-handles:${panel.key}`
+  if (panel.role === 'drawer-front' && pullOps.length >= 2) addDrawerBarHandle(handles, panel, pullOps)
+  else for (const op of pullOps) addPullHandle(handles, panel, op)
+  group.add(handles)
+}
+
 function addThroughHoleOverlay(group: THREE.Group, panel: CompiledPanel, op: PanelOperation, color: number) {
   const diameter = op.diameter ?? 0
   if (diameter <= 0) return
@@ -743,6 +879,7 @@ function buildScene(options: BuildSceneOptions = {}) {
     mesh.receiveShadow = panelMaterialMode() === 'shaded'
     mesh.name = panel.key
     group.add(mesh)
+    addPhysicalPullHandles(group, panel)
     if (props.renderMode === 'technical') {
       addTechnicalOperationOverlays(group, panel, compiled.operations)
     }
