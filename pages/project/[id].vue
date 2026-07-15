@@ -659,7 +659,8 @@ const topChromeWidth = computed(() => {
   if (collapseEditorInputs.value) {
     return 'calc(100vw - 24px)'
   }
-  return `calc((1 - ${activeSplitRatio.value}) * 100vw - ${PROJECT_TOP_CHROME_LEFT_PX + PROJECT_TOP_CHROME_END_GAP_PX + EDITOR_SPLIT_DIVIDER_WIDTH_PX}px)`
+  const previewPercent = Math.max(0, Math.min(100, (1 - activeSplitRatio.value) * 100))
+  return `calc(${previewPercent.toFixed(4)}vw - ${PROJECT_TOP_CHROME_LEFT_PX + PROJECT_TOP_CHROME_END_GAP_PX + EDITOR_SPLIT_DIVIDER_WIDTH_PX}px)`
 })
 const mobileActionTop = computed(() => isMobileViewport.value ? '7rem' : '4rem')
 const canvasChromeTeleportSelector = computed(() =>
