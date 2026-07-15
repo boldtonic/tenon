@@ -479,16 +479,24 @@ function compileDoorOrFrontPanels(module: FurnitureModule, cell: CompiledCellBou
   const diameter = config.pullHoleDiameter
   const inset = config.pullHoleEdgeInset
 
+  function handleCenterY(panelHeight: number, pairReserve = 0) {
+    const edgeInset = Math.max(inset, diameter / 2)
+    const min = -panelHeight / 2 + edgeInset + pairReserve
+    const max = panelHeight / 2 - edgeInset - pairReserve
+    if (module.handlePosition === 'center') return Math.max(min, Math.min(max, 0))
+    return module.handlePosition === 'bottom' ? min : max
+  }
+
   function singleDoorPull(panel: CompiledPanel, hinge: 'left' | 'right') {
     const x = hinge === 'left' ? panel.width / 2 - inset : -panel.width / 2 + inset
-    const y = panel.height / 2 - inset
+    const y = handleCenterY(panel.height)
     return { x, y }
   }
 
   function pairedDoorPull(panel: CompiledPanel, side: 'left' | 'right') {
     const xFromCenter = panel.width / 2 + frontClearance - config.pullHolePairGap / 2
     const x = side === 'left' ? xFromCenter : -xFromCenter
-    const y = panel.height / 2 - inset
+    const y = handleCenterY(panel.height)
     return { x, y }
   }
 
@@ -505,7 +513,9 @@ function compileDoorOrFrontPanels(module: FurnitureModule, cell: CompiledCellBou
       orientation: 'vertical-xy',
     })
     panels.push(panel)
-    operations.push(makePullHole(panel, singleDoorPull(panel, hinge), diameter, 'a'))
+    if (module.handlesEnabled !== false) {
+      operations.push(makePullHole(panel, singleDoorPull(panel, hinge), diameter, 'a'))
+    }
     return { panels, operations }
   }
 
@@ -532,8 +542,10 @@ function compileDoorOrFrontPanels(module: FurnitureModule, cell: CompiledCellBou
       orientation: 'vertical-xy',
     })
     panels.push(left, right)
-    operations.push(makePullHole(left, pairedDoorPull(left, 'left'), diameter, 'a'))
-    operations.push(makePullHole(right, pairedDoorPull(right, 'right'), diameter, 'a'))
+    if (module.handlesEnabled !== false) {
+      operations.push(makePullHole(left, pairedDoorPull(left, 'left'), diameter, 'a'))
+      operations.push(makePullHole(right, pairedDoorPull(right, 'right'), diameter, 'a'))
+    }
   }
 
   return { panels, operations }
@@ -582,11 +594,23 @@ function compileDrawer(module: FurnitureModule, cell: CompiledCellBounds, config
       orientation: 'vertical-xy',
     })
     panels.push(front)
-    const pullY = frontHeight / 2 - config.pullHoleEdgeInset
-    operations.push(
-      makePullHole(front, { x: -config.pullHolePairGap / 2, y: pullY }, config.pullHoleDiameter, 'left'),
-      makePullHole(front, { x: config.pullHolePairGap / 2, y: pullY }, config.pullHoleDiameter, 'right'),
-    )
+    if (module.handlesEnabled !== false) {
+      const halfGap = config.pullHolePairGap / 2
+      const edgeInset = Math.max(config.pullHoleEdgeInset, config.pullHoleDiameter / 2)
+      const pairReserve = module.handleOrientation === 'vertical' ? halfGap : 0
+      const minY = -frontHeight / 2 + edgeInset + pairReserve
+      const maxY = frontHeight / 2 - edgeInset - pairReserve
+      const pullY = module.handlePosition === 'center'
+        ? Math.max(minY, Math.min(maxY, 0))
+        : module.handlePosition === 'bottom' ? minY : maxY
+      const centers = module.handleOrientation === 'vertical'
+        ? [{ x: 0, y: pullY - halfGap }, { x: 0, y: pullY + halfGap }]
+        : [{ x: -halfGap, y: pullY }, { x: halfGap, y: pullY }]
+      operations.push(
+        makePullHole(front, centers[0]!, config.pullHoleDiameter, 'left'),
+        makePullHole(front, centers[1]!, config.pullHoleDiameter, 'right'),
+      )
+    }
 
     const leftSide = makePanel({
       key: `drawer-side:${module.id}:${drawerIndex}:left`,

@@ -96,11 +96,11 @@ Current status of handles/pulls:
 - Drawers render a short horizontal graphite pull using the existing pair of pull-hole positions as supports.
 - Single-door fronts render a small graphite knob at the existing pull-hole position.
 - The 2D editor/preview now uses the same visual language: drawer bars and door knobs instead of generic hole dots.
-- Technical/cutlist geometry still uses the existing pull-hole/cutout operations; the v1 handle hardware is visual only and does not yet alter manufacturing output.
-- Suggested future product split remains:
-  - Diseño controls whether handles exist and their placement/orientation.
-  - Estilo controls global handle type and finish.
-  - Default should remain handles enabled for realism, with premium simple options first.
+- Diseño now controls handles per selected front module: enabled/disabled, upper/center/lower position, and horizontal/vertical orientation.
+- Estilo now controls the global visual type (`Automático`, `Pomo`, `Barra`) and finish (`Grafito`, `Níquel`, `Latón`).
+- Existing projects normalize to handles enabled, upper placement, contextual orientation, and `Automático · Grafito`, preserving the previous appearance.
+- Disabling handles removes their pull-hole operations from compiled geometry and cutlist output.
+- Type and finish variants remain visual in v1; model-specific drilling patterns and purchasable hardware specifications are a future manufacturing step.
 
 ## Current Suggested Roadmap
 

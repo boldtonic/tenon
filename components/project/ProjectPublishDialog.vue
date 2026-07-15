@@ -366,6 +366,7 @@ async function unpublishProject() {
             v-else
             :columns="previewColumns"
             :furniture-config="previewConfig"
+            :public-style="normalizedPublicStyle"
             class="size-full rounded-none border-0 ring-0"
           />
           <div

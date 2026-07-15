@@ -1,4 +1,4 @@
-import type { CameraState, FurnitureColumn, FurnitureConfig, FurnitureModule, MaterialAssignment, ModuleType, PublicStyle } from './types'
+import type { CameraState, FurnitureColumn, FurnitureConfig, FurnitureModule, HandleOrientation, MaterialAssignment, ModuleType, PublicStyle } from './types'
 import { CUSTOM_MATERIAL_ID, DEFAULT_MATERIAL_ASSIGNMENTS, findPreset, MATERIAL_PRESETS } from './materials'
 
 // Default furniture config (Qe in compiled). All values in metres.
@@ -53,6 +53,15 @@ export const DEFAULT_SHELF_HEIGHT = 0.3
 export const DEFAULT_DRAWER_COUNT = 1
 export const DRAWER_COUNT_MIN = 1
 export const DRAWER_COUNT_MAX = 32
+export const DEFAULT_HANDLE_POSITION = 'top' as const
+
+export function defaultHandleOrientation(type: ModuleType): HandleOrientation {
+  return type === 'drawer' ? 'horizontal' : 'vertical'
+}
+
+export function moduleHasFront(type: ModuleType): boolean {
+  return type !== 'shelf'
+}
 
 export function snapConfig(c: Partial<FurnitureConfig>): FurnitureConfig {
   const r = { ...DEFAULT_FURNITURE_CONFIG, ...c }
@@ -66,6 +75,11 @@ export function snapConfig(c: Partial<FurnitureConfig>): FurnitureConfig {
 export function defaultModule(type: ModuleType): FurnitureModule {
   const m: FurnitureModule = { id: cryptoRandomId(), type, height: DEFAULT_SHELF_HEIGHT }
   if (type === 'drawer') m.drawerCount = DEFAULT_DRAWER_COUNT
+  if (moduleHasFront(type)) {
+    m.handlesEnabled = true
+    m.handlePosition = DEFAULT_HANDLE_POSITION
+    m.handleOrientation = defaultHandleOrientation(type)
+  }
   return m
 }
 
@@ -111,6 +125,10 @@ export const DEFAULT_PUBLIC_STYLE: PublicStyle = {
       sides:   defaultAssignment('sides'),
       deck:    defaultAssignment('deck'),
       fronts:  defaultAssignment('fronts'),
+    },
+    handles: {
+      type: 'auto',
+      finish: 'graphite',
     },
   },
 }
@@ -193,6 +211,15 @@ function normalizeRenderedMaterials(input: unknown): PublicStyle['rendered']['ma
   }
 }
 
+function normalizeRenderedHandles(input: unknown): PublicStyle['rendered']['handles'] {
+  const source = input && typeof input === 'object' ? input as Partial<PublicStyle['rendered']['handles']> : {}
+  const fallback = DEFAULT_PUBLIC_STYLE.rendered.handles
+  return {
+    type: source.type === 'knob' || source.type === 'bar' || source.type === 'auto' ? source.type : fallback.type,
+    finish: source.finish === 'nickel' || source.finish === 'brass' || source.finish === 'graphite' ? source.finish : fallback.finish,
+  }
+}
+
 export function normalizePublicStyle(input?: PublicStyleInput | null): PublicStyle {
   const source = input && typeof input === 'object' ? input : null
   return {
@@ -203,6 +230,7 @@ export function normalizePublicStyle(input?: PublicStyleInput | null): PublicSty
     rendered: {
       colors: normalizeRenderedColors(source?.rendered?.colors),
       materials: normalizeRenderedMaterials((source?.rendered as { materials?: unknown } | null | undefined)?.materials),
+      handles: normalizeRenderedHandles((source?.rendered as { handles?: unknown } | null | undefined)?.handles),
     },
   }
 }

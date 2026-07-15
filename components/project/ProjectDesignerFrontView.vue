@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { DEFAULT_FURNITURE_CONFIG } from '~~/shared/domain/defaults'
-import type { FurnitureColumn, FurnitureConfig, FurnitureModule } from '~~/shared/domain/types'
+import { DEFAULT_FURNITURE_CONFIG, normalizePublicStyle } from '~~/shared/domain/defaults'
+import { HANDLE_FINISH_SPECS, moduleHandlesEnabled, resolveHandleCenter, resolveHandleType } from '~~/shared/domain/handles'
+import type { FurnitureColumn, FurnitureConfig, FurnitureModule, PublicStyle } from '~~/shared/domain/types'
 import { moduleTypeText, uiText as t } from '~~/shared/i18n/ui-copy'
 
 interface Props {
@@ -8,9 +9,11 @@ interface Props {
   config: FurnitureConfig
   selectedModuleIds: string[]
   zoomPercent: number
+  publicStyle?: PublicStyle | null
 }
 
 const props = defineProps<Props>()
+const handleStyle = computed(() => normalizePublicStyle(props.publicStyle).rendered.handles)
 
 const emit = defineEmits<{
   (e: 'add-column-left'): void
@@ -191,41 +194,67 @@ function visualBgClass(): string {
   return 'bg-[var(--ui-bg-muted)]'
 }
 
-function leftDoorPullStyle(): Record<string, string> {
+function handleOrientation(mod: FurnitureModule) {
+  return mod.handleOrientation ?? (mod.type === 'drawer' ? 'horizontal' : 'vertical')
+}
+
+function handleDimensions(mod: FurnitureModule) {
   const d = pullDiameterPx()
-  const r = d / 2
+  if (resolveHandleType(mod, handleStyle.value) === 'knob') return { width: d, height: d }
+  const length = Math.max(
+    Math.round(d * 2.6),
+    Math.round((props.config.pullHolePairGap + props.config.pullHoleDiameter * 1.15) * pxPerMeter.value),
+  )
+  const thickness = Math.max(3, Math.round(d * 0.55))
+  return handleOrientation(mod) === 'vertical'
+    ? { width: thickness, height: length }
+    : { width: length, height: thickness }
+}
+
+function handleVisualStyle(mod: FurnitureModule): Record<string, string> {
+  return { backgroundColor: HANDLE_FINISH_SPECS[handleStyle.value.finish].color }
+}
+
+function handleClass(mod: FurnitureModule): string {
+  return resolveHandleType(mod, handleStyle.value) === 'knob'
+    ? 'pull-knob-2d rounded-full'
+    : 'pull-bar-2d'
+}
+
+function doorHandleBottom(mod: FurnitureModule, handleHeight: number): string {
+  const edge = Math.max(props.config.pullHoleEdgeInset, props.config.pullHoleDiameter / 2)
+  const center = resolveHandleCenter(edge, Math.max(edge, mod.height - edge), mod.handlePosition)
+  return `${center * pxPerMeter.value - handleHeight / 2}px`
+}
+
+function singleDoorPullStyle(mod: FurnitureModule, hinge: 'left' | 'right'): Record<string, string> {
+  const { width, height } = handleDimensions(mod)
   const inset = pullEdgeInsetPx()
+  const horizontal: Record<string, string> = hinge === 'left'
+    ? { right: `${inset - width / 2}px` }
+    : { left: `${inset - width / 2}px` }
   return {
-    width: `${d}px`,
-    height: `${d}px`,
-    top: `${inset - r}px`,
-    right: `${inset - r}px`,
+    width: `${width}px`,
+    height: `${height}px`,
+    bottom: doorHandleBottom(mod, height),
+    ...horizontal,
+    ...handleVisualStyle(mod),
   }
 }
 
-function rightDoorPullStyle(): Record<string, string> {
-  const d = pullDiameterPx()
-  const r = d / 2
-  const inset = pullEdgeInsetPx()
-  return {
-    width: `${d}px`,
-    height: `${d}px`,
-    top: `${inset - r}px`,
-    left: `${inset - r}px`,
-  }
-}
-
-function doorsPullStyle(side: 'left' | 'right'): Record<string, string> {
-  const d = pullDiameterPx()
-  const r = d / 2
-  const inset = pullEdgeInsetPx()
+function doorsPullStyle(mod: FurnitureModule, side: 'left' | 'right'): Record<string, string> {
+  const { width, height } = handleDimensions(mod)
   const halfGap = pullPairHalfGapPx()
-  const offset = side === 'left' ? -halfGap : halfGap
+  const isHorizontalBar = resolveHandleType(mod, handleStyle.value) === 'bar' && handleOrientation(mod) === 'horizontal'
+  const left = isHorizontalBar
+    ? side === 'left' ? `calc(25% - ${width / 2}px)` : `calc(75% - ${width / 2}px)`
+    : `calc(50% + ${(side === 'left' ? -halfGap : halfGap) - width / 2}px)`
   return {
-    width: `${d}px`,
-    height: `${d}px`,
-    top: `${inset - r}px`,
-    left: `calc(50% + ${offset - r}px)`,
+    width: `${width}px`,
+    height: `${height}px`,
+    bottom: doorHandleBottom(mod, height),
+    left,
+    ...handleVisualStyle(mod),
   }
 }
 
@@ -239,27 +268,24 @@ function doorDividerStyle(): Record<string, string> {
   }
 }
 
-function drawerPullBarStyle(mod: FurnitureModule, drawerIndex: number): Record<string, string> {
-  const d = pullDiameterPx()
+function drawerHandleStyle(mod: FurnitureModule, drawerIndex: number): Record<string, string> {
   const total = drawerCount(mod)
   const topM = (drawerIndex / total) * mod.height
   const bottomM = ((drawerIndex - 1) / total) * mod.height
-  let centreM = topM - pullHoleEdgeInset()
-  const minCentre = bottomM + props.config.pullHoleDiameter / 2
-  const maxCentre = topM - props.config.pullHoleDiameter / 2
-  if (centreM < minCentre) centreM = minCentre
-  if (centreM > maxCentre) centreM = maxCentre
+  const isVerticalBar = resolveHandleType(mod, handleStyle.value) === 'bar' && handleOrientation(mod) === 'vertical'
+  const reserve = isVerticalBar ? props.config.pullHolePairGap / 2 : 0
+  const edge = Math.max(pullHoleEdgeInset(), props.config.pullHoleDiameter / 2)
+  const minCentre = bottomM + edge + reserve
+  const maxCentre = topM - edge - reserve
+  const centreM = resolveHandleCenter(minCentre, maxCentre, mod.handlePosition)
   const pct = (centreM / mod.height) * 100
-  const height = Math.max(3, Math.round(d * 0.55))
-  const width = Math.max(
-    Math.round(d * 2.6),
-    Math.round((props.config.pullHolePairGap + props.config.pullHoleDiameter * 1.15) * pxPerMeter.value),
-  )
+  const { width, height } = handleDimensions(mod)
   return {
     width: `${width}px`,
     height: `${height}px`,
     left: `calc(50% - ${width / 2}px)`,
     bottom: `calc(${pct}% - ${height / 2}px)`,
+    ...handleVisualStyle(mod),
   }
 }
 
@@ -558,26 +584,30 @@ function addButtonMarginTop(boundaryIndex: number): string {
                                 aria-hidden="true"
                               />
                               <template
+                                v-if="moduleHandlesEnabled(mod)"
                                 v-for="i in drawerCount(mod)"
                                 :key="`${mod.id}-dr-${i}`"
                               >
                                 <div
-                                  class="pull-bar-2d absolute"
-                                  :style="drawerPullBarStyle(mod, i)"
+                                  class="absolute"
+                                  :class="handleClass(mod)"
+                                  :style="drawerHandleStyle(mod, i)"
                                 />
                               </template>
                             </template>
 
                             <div
-                              v-else-if="mod.type === 'left-door'"
-                              class="pull-knob-2d absolute rounded-full"
-                              :style="leftDoorPullStyle()"
+                              v-else-if="mod.type === 'left-door' && moduleHandlesEnabled(mod)"
+                              class="absolute"
+                              :class="handleClass(mod)"
+                              :style="singleDoorPullStyle(mod, 'left')"
                             />
 
                             <div
-                              v-else-if="mod.type === 'right-door'"
-                              class="pull-knob-2d absolute rounded-full"
-                              :style="rightDoorPullStyle()"
+                              v-else-if="mod.type === 'right-door' && moduleHandlesEnabled(mod)"
+                              class="absolute"
+                              :class="handleClass(mod)"
+                              :style="singleDoorPullStyle(mod, 'right')"
                             />
 
                             <template v-else-if="mod.type === 'doors'">
@@ -586,14 +616,18 @@ function addButtonMarginTop(boundaryIndex: number): string {
                                 :class="visualBgClass()"
                                 :style="doorDividerStyle()"
                               />
-                              <div
-                                class="pull-knob-2d absolute rounded-full"
-                                :style="doorsPullStyle('left')"
-                              />
-                              <div
-                                class="pull-knob-2d absolute rounded-full"
-                                :style="doorsPullStyle('right')"
-                              />
+                              <template v-if="moduleHandlesEnabled(mod)">
+                                <div
+                                  class="absolute"
+                                  :class="handleClass(mod)"
+                                  :style="doorsPullStyle(mod, 'left')"
+                                />
+                                <div
+                                  class="absolute"
+                                  :class="handleClass(mod)"
+                                  :style="doorsPullStyle(mod, 'right')"
+                                />
+                              </template>
                             </template>
                           </button>
 
@@ -830,14 +864,12 @@ function addButtonMarginTop(boundaryIndex: number): string {
   color: var(--ui-primary);
 }
 .pull-knob-2d {
-  background: #34312c;
   border: 1px solid rgb(255 255 255 / 0.18);
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.16),
     0 1px 2px rgb(0 0 0 / 0.28);
 }
 .pull-bar-2d {
-  background: #34312c;
   border: 1px solid rgb(255 255 255 / 0.16);
   border-radius: 9999px;
   box-shadow:

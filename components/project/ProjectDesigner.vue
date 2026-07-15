@@ -3,7 +3,7 @@ import type * as Y from 'yjs'
 import type { AiFurnitureDraft, AiFurnitureGenerateResponse } from '~~/shared/domain/ai-furniture'
 import { AI_FURNITURE_PROMPT_MAX_LENGTH } from '~~/shared/domain/ai-furniture'
 import { DEFAULT_COLUMN_WIDTH, DEFAULT_DRAWER_COUNT, DRAWER_COUNT_MAX, DRAWER_COUNT_MIN, DEFAULT_FURNITURE_CONFIG, FURNITURE_CONFIG_WRITABLE_KEYS, MODULE_TYPES } from '~~/shared/domain/defaults'
-import type { FurnitureConfig, FurnitureModule, ModuleType } from '~~/shared/domain/types'
+import type { FurnitureConfig, FurnitureModule, HandleOrientation, HandlePosition, ModuleType, PublicStyle } from '~~/shared/domain/types'
 import { validateFurnitureDocIssues } from '~~/shared/domain/assembly-validation'
 import { furnitureConfigText, moduleTypeText, uiText as t } from '~~/shared/i18n/ui-copy'
 import {
@@ -17,6 +17,9 @@ import {
   setConfigValue,
   setDrawerCount,
   setModuleHeight,
+  setModuleHandleOrientation,
+  setModuleHandlePosition,
+  setModuleHandlesEnabled,
   setModuleType,
 } from '~~/shared/yjs/doc'
 
@@ -24,6 +27,7 @@ interface Props {
   ydoc: Y.Doc
   selectedModules?: { id: string }[]
   zoomPercent?: number
+  publicStyle?: PublicStyle | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -434,6 +438,37 @@ const selectedDrawerCountValue = computed(() => {
   return typeof first === 'number' && selectedModuleInfos.value.every(info => info.module.type === 'drawer' && info.module.drawerCount === first) ? String(first) : ''
 })
 
+const selectedHandleModuleInfos = computed(() => selectedModuleInfos.value.filter(info => info.module.type !== 'shelf'))
+
+const selectedHandlesEnabledValue = computed<boolean | '__multiple__'>(() => {
+  const infos = selectedHandleModuleInfos.value
+  if (infos.length === 0) return '__multiple__'
+  const first = infos[0]!.module.handlesEnabled !== false
+  return infos.every(info => (info.module.handlesEnabled !== false) === first) ? first : '__multiple__'
+})
+
+const selectedHandlePositionValue = computed<HandlePosition | '__multiple__'>(() => {
+  const infos = selectedHandleModuleInfos.value
+  if (infos.length === 0) return '__multiple__'
+  const first = infos[0]!.module.handlePosition ?? 'top'
+  return infos.every(info => (info.module.handlePosition ?? 'top') === first) ? first : '__multiple__'
+})
+
+const selectedHandleOrientationValue = computed<HandleOrientation | '__multiple__'>(() => {
+  const infos = selectedHandleModuleInfos.value
+  if (infos.length === 0) return '__multiple__'
+  const orientation = (module: FurnitureModule): HandleOrientation => module.handleOrientation ?? (module.type === 'drawer' ? 'horizontal' : 'vertical')
+  const first = orientation(infos[0]!.module)
+  return infos.every(info => orientation(info.module) === first) ? first : '__multiple__'
+})
+
+const selectedHandlePositionItems = computed(() => [
+  { value: '__multiple__', label: t('multiple') },
+  { value: 'top', label: t('handleTop') },
+  { value: 'center', label: t('handleCenter') },
+  { value: 'bottom', label: t('handleBottom') },
+])
+
 const selectedTypeItems = computed(() => [
   { value: '__multiple__', label: t('multiple') },
   ...MODULE_TYPES.map(type => ({ value: type, label: moduleTypeText(type) })),
@@ -650,6 +685,25 @@ function onSelectedDrawerCountCommit(event: Event) {
   input.value = String(next)
 }
 
+function updateSelectedHandlesEnabled(enabled: boolean) {
+  for (const info of selectedHandleModuleInfos.value) {
+    setModuleHandlesEnabled(props.ydoc, info.columnIndex, info.moduleIndex, enabled)
+  }
+}
+
+function onSelectedHandlePositionChange(value: string) {
+  if (value !== 'top' && value !== 'center' && value !== 'bottom') return
+  for (const info of selectedHandleModuleInfos.value) {
+    setModuleHandlePosition(props.ydoc, info.columnIndex, info.moduleIndex, value)
+  }
+}
+
+function updateSelectedHandleOrientation(orientation: HandleOrientation) {
+  for (const info of selectedHandleModuleInfos.value) {
+    setModuleHandleOrientation(props.ydoc, info.columnIndex, info.moduleIndex, orientation)
+  }
+}
+
 if (getCurrentScope()) {
   onScopeDispose(() => {
     abortAiGeneration()
@@ -663,6 +717,7 @@ if (getCurrentScope()) {
     <ProjectDesignerFrontView
       :columns="columns"
       :config="config"
+      :public-style="publicStyle"
       :selected-module-ids="selectedIds"
       :zoom-percent="clampedZoomPercent"
       class="relative z-0 min-h-0 w-full flex-1"
@@ -797,6 +852,86 @@ if (getCurrentScope()) {
                         @blur="onSelectedDrawerCountCommit"
                       >
                     </dd>
+                  </template>
+
+                  <template v-if="selectedHandleModuleInfos.length > 0">
+                    <dt class="self-center text-muted">
+                      {{ t('handle') }}
+                    </dt>
+                    <dd class="min-w-0">
+                      <div
+                        class="grid grid-cols-2 rounded-md bg-muted p-0.5"
+                        role="group"
+                        :aria-label="t('handle')"
+                      >
+                        <button
+                          type="button"
+                          class="min-h-7 rounded px-2 text-xs font-medium transition-colors"
+                          :class="selectedHandlesEnabledValue === false ? 'bg-elevated text-highlighted shadow-sm' : 'text-muted hover:text-highlighted'"
+                          :aria-pressed="selectedHandlesEnabledValue === false"
+                          @click="updateSelectedHandlesEnabled(false)"
+                        >
+                          {{ t('no') }}
+                        </button>
+                        <button
+                          type="button"
+                          class="min-h-7 rounded px-2 text-xs font-medium transition-colors"
+                          :class="selectedHandlesEnabledValue === true ? 'bg-elevated text-highlighted shadow-sm' : 'text-muted hover:text-highlighted'"
+                          :aria-pressed="selectedHandlesEnabledValue === true"
+                          @click="updateSelectedHandlesEnabled(true)"
+                        >
+                          {{ t('yes') }}
+                        </button>
+                      </div>
+                    </dd>
+
+                    <template v-if="selectedHandlesEnabledValue !== false">
+                      <dt class="self-center text-muted">
+                        {{ t('handlePosition') }}
+                      </dt>
+                      <dd class="min-w-0">
+                        <USelect
+                          :model-value="selectedHandlePositionValue"
+                          :items="selectedHandlePositionItems"
+                          value-key="value"
+                          class="w-full"
+                          size="xs"
+                          @update:model-value="onSelectedHandlePositionChange"
+                        />
+                      </dd>
+
+                      <dt class="self-center text-muted">
+                        {{ t('orientation') }}
+                      </dt>
+                      <dd class="min-w-0">
+                        <div
+                          class="grid grid-cols-2 rounded-md bg-muted p-0.5"
+                          role="group"
+                          :aria-label="t('orientation')"
+                        >
+                          <button
+                            type="button"
+                            class="flex min-h-7 items-center justify-center gap-1 rounded px-1.5 text-[11px] font-medium transition-colors"
+                            :class="selectedHandleOrientationValue === 'horizontal' ? 'bg-elevated text-highlighted shadow-sm' : 'text-muted hover:text-highlighted'"
+                            :aria-pressed="selectedHandleOrientationValue === 'horizontal'"
+                            @click="updateSelectedHandleOrientation('horizontal')"
+                          >
+                            <UIcon name="i-lucide-arrow-left-right" class="size-3.5" />
+                            {{ t('handleHorizontal') }}
+                          </button>
+                          <button
+                            type="button"
+                            class="flex min-h-7 items-center justify-center gap-1 rounded px-1.5 text-[11px] font-medium transition-colors"
+                            :class="selectedHandleOrientationValue === 'vertical' ? 'bg-elevated text-highlighted shadow-sm' : 'text-muted hover:text-highlighted'"
+                            :aria-pressed="selectedHandleOrientationValue === 'vertical'"
+                            @click="updateSelectedHandleOrientation('vertical')"
+                          >
+                            <UIcon name="i-lucide-arrow-up-down" class="size-3.5" />
+                            {{ t('handleVertical') }}
+                          </button>
+                        </div>
+                      </dd>
+                    </template>
                   </template>
                 </dl>
 
@@ -981,6 +1116,7 @@ if (getCurrentScope()) {
           <ProjectPreview
             :columns="aiDraft.doc.columns"
             :config="aiDraft.doc.config"
+            :public-style="publicStyle"
           />
         </div>
         <div class="grid gap-2 text-xs">

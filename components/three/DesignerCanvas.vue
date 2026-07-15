@@ -17,7 +17,8 @@ import {
 import { makePanelMaterial, type PanelMaterialMode, type PanelMaterialSpec } from '~~/shared/three/materials'
 import { DEFAULT_CAMERA_STATE, hexColorToNumber, normalizePublicStyle } from '~~/shared/domain/defaults'
 import { resolveMaterial, type CabinetPart } from '~~/shared/domain/materials'
-import type { CameraState, CompiledPanel, FurnitureDoc, PanelOperation, PublicStyle } from '~~/shared/domain/types'
+import { HANDLE_FINISH_SPECS } from '~~/shared/domain/handles'
+import type { CameraState, CompiledPanel, FurnitureDoc, FurnitureModule, HandleOrientation, PanelOperation, PublicStyle } from '~~/shared/domain/types'
 import { uiText as t } from '~~/shared/i18n/ui-copy'
 
 // ---------------------------------------------------------------------------
@@ -51,7 +52,6 @@ const POSITION_SETTLE_EPSILON_SQ = 1e-8
 const ROTATION_SETTLE_EPSILON = 1e-5
 const TECHNICAL_OVERLAY_OFFSET = 6e-4
 const TECHNICAL_HOLE_SEGMENTS = 32
-const PULL_HANDLE_COLOR = 0x34312c
 const PULL_HANDLE_MIN_DIAMETER = 0.024
 const PULL_HANDLE_MAX_DIAMETER = 0.038
 const PULL_HANDLE_STEM_RATIO = 0.22
@@ -692,10 +692,12 @@ function pullHandleDiameter(panel: CompiledPanel, op: PanelOperation): number {
 }
 
 function makePullHandleMaterial(): THREE.MeshStandardMaterial {
+  const finish = resolvedPublicStyle.value.rendered.handles.finish
+  const spec = HANDLE_FINISH_SPECS[finish]
   return new THREE.MeshStandardMaterial({
-    color: new THREE.Color(PULL_HANDLE_COLOR),
-    metalness: 0.54,
-    roughness: 0.46,
+    color: new THREE.Color(spec.color),
+    metalness: spec.metalness,
+    roughness: spec.roughness,
   })
 }
 
@@ -719,8 +721,12 @@ function makePullBarGeometry(radius: number, length: number): THREE.CylinderGeom
   return geometry
 }
 
-function addPullHandle(group: THREE.Group, panel: CompiledPanel, op: PanelOperation) {
-  const center = operationCenter(op)
+function addPullHandleAt(
+  group: THREE.Group,
+  panel: CompiledPanel,
+  op: PanelOperation,
+  center = operationCenter(op),
+) {
   const diameter = pullHandleDiameter(panel, op)
   const capRadius = diameter / 2
   const stemRadius = Math.max(0.004, diameter * PULL_HANDLE_STEM_RATIO)
@@ -743,20 +749,47 @@ function addPullHandle(group: THREE.Group, panel: CompiledPanel, op: PanelOperat
   group.add(cap)
 }
 
-function addDrawerBarHandle(group: THREE.Group, panel: CompiledPanel, ops: PanelOperation[]) {
+function addBarHandle(
+  group: THREE.Group,
+  panel: CompiledPanel,
+  ops: PanelOperation[],
+  orientation: HandleOrientation,
+) {
+  const axis = orientation === 'vertical' ? 'y' : 'x'
   const centers = ops
     .map(op => ({ op, center: operationCenter(op) }))
-    .sort((a, b) => a.center.x - b.center.x)
-  const left = centers[0]
-  const right = centers[centers.length - 1]
-  if (!left || !right) return
+    .sort((a, b) => a.center[axis] - b.center[axis])
+  const reference = centers[0]
+  if (!reference) return
+
+  let start = centers[0]!
+  let end = centers[centers.length - 1]!
+  if (centers.length === 1) {
+    const panelSpan = orientation === 'vertical' ? panel.height : panel.width
+    const halfSupportSpan = Math.min(PULL_BAR_MIN_LENGTH * 0.36, panelSpan * 0.12)
+    start = {
+      op: reference.op,
+      center: {
+        x: reference.center.x - (orientation === 'horizontal' ? halfSupportSpan : 0),
+        y: reference.center.y - (orientation === 'vertical' ? halfSupportSpan : 0),
+      },
+    }
+    end = {
+      op: reference.op,
+      center: {
+        x: reference.center.x + (orientation === 'horizontal' ? halfSupportSpan : 0),
+        y: reference.center.y + (orientation === 'vertical' ? halfSupportSpan : 0),
+      },
+    }
+  }
 
   const baseDiameter = Math.max(
-    pullHandleDiameter(panel, left.op),
-    pullHandleDiameter(panel, right.op),
+    pullHandleDiameter(panel, start.op),
+    pullHandleDiameter(panel, end.op),
   )
-  const span = Math.abs(right.center.x - left.center.x)
-  const maxByPanel = Math.max(PULL_BAR_MIN_LENGTH, panel.width * 0.5)
+  const span = Math.abs(end.center[axis] - start.center[axis])
+  const panelSpan = orientation === 'vertical' ? panel.height : panel.width
+  const maxByPanel = Math.max(PULL_BAR_MIN_LENGTH, panelSpan * 0.5)
   const length = Math.min(PULL_BAR_MAX_LENGTH, maxByPanel, Math.max(PULL_BAR_MIN_LENGTH, span + baseDiameter * 1.15))
   const radius = Math.max(0.0045, Math.min(0.007, baseDiameter * 0.18))
   const stemRadius = radius * 0.72
@@ -764,25 +797,26 @@ function addDrawerBarHandle(group: THREE.Group, panel: CompiledPanel, ops: Panel
   const barZ = faceZ + PULL_HANDLE_STEM_DEPTH + radius * 0.8
   const material = makePullHandleMaterial()
 
-  for (const { op, center } of [left, right]) {
+  for (const [index, { op, center }] of [start, end].entries()) {
     const stemDepth = Math.max(0.004, barZ - faceZ)
     const stem = new THREE.Mesh(makePullHandleStemGeometry(stemRadius, stemDepth), material)
     stem.position.set(center.x, center.y, faceZ + stemDepth / 2)
     stem.castShadow = true
     stem.receiveShadow = true
-    stem.name = `pull-bar-stem:${op.id}`
+    stem.name = `pull-bar-stem:${op.id}:${index}`
     group.add(stem)
   }
 
   const bar = new THREE.Mesh(makePullBarGeometry(radius, length), material)
-  bar.position.set((left.center.x + right.center.x) / 2, (left.center.y + right.center.y) / 2, barZ)
+  bar.position.set((start.center.x + end.center.x) / 2, (start.center.y + end.center.y) / 2, barZ)
+  if (orientation === 'vertical') bar.rotation.z = Math.PI / 2
   bar.castShadow = true
   bar.receiveShadow = true
   bar.name = `pull-bar:${panel.key}`
   group.add(bar)
 }
 
-function addPhysicalPullHandles(group: THREE.Group, panel: CompiledPanel) {
+function addPhysicalPullHandles(group: THREE.Group, panel: CompiledPanel, module?: FurnitureModule) {
   if (props.renderMode === 'technical') return
   if (panel.orientation !== 'vertical-xy') return
   if (panel.role !== 'door-front' && panel.role !== 'drawer-front') return
@@ -792,8 +826,25 @@ function addPhysicalPullHandles(group: THREE.Group, panel: CompiledPanel) {
 
   const handles = new THREE.Group()
   handles.name = `pull-handles:${panel.key}`
-  if (panel.role === 'drawer-front' && pullOps.length >= 2) addDrawerBarHandle(handles, panel, pullOps)
-  else for (const op of pullOps) addPullHandle(handles, panel, op)
+  const requestedType = resolvedPublicStyle.value.rendered.handles.type
+  const handleType = requestedType === 'auto'
+    ? panel.role === 'drawer-front' ? 'bar' : 'knob'
+    : requestedType
+  const orientation = module?.handleOrientation
+    ?? (panel.role === 'drawer-front' ? 'horizontal' : 'vertical')
+
+  if (handleType === 'bar') {
+    addBarHandle(handles, panel, pullOps, orientation)
+  }
+  else {
+    const center = pullOps.reduce((sum, op) => {
+      const point = operationCenter(op)
+      return { x: sum.x + point.x, y: sum.y + point.y }
+    }, { x: 0, y: 0 })
+    center.x /= pullOps.length
+    center.y /= pullOps.length
+    addPullHandleAt(handles, panel, pullOps[0]!, center)
+  }
   group.add(handles)
 }
 
@@ -869,6 +920,7 @@ function buildScene(options: BuildSceneOptions = {}) {
   if (!fd) return
   cabinetDepthForTargets = fd.config.depth
   const compiled = compileAssembly(fd)
+  const modulesById = new Map(fd.columns.flatMap(column => column.modules.map(module => [module.id, module] as const)))
   for (const panel of compiled.panels) {
     const group = new THREE.Group()
     const geometry = compilePartGeometry(panel, compiled.operations)
@@ -879,7 +931,7 @@ function buildScene(options: BuildSceneOptions = {}) {
     mesh.receiveShadow = panelMaterialMode() === 'shaded'
     mesh.name = panel.key
     group.add(mesh)
-    addPhysicalPullHandles(group, panel)
+    addPhysicalPullHandles(group, panel, panel.sourceModuleId ? modulesById.get(panel.sourceModuleId) : undefined)
     if (props.renderMode === 'technical') {
       addTechnicalOperationOverlays(group, panel, compiled.operations)
     }
@@ -1747,6 +1799,7 @@ const publicStyleSignature = computed(() => {
     m.sides.presetId,   m.sides.customColor,
     m.deck.presetId,    m.deck.customColor,
     m.fronts.presetId,  m.fronts.customColor,
+    s.rendered.handles.type, s.rendered.handles.finish,
     c.background, c.grid, c.defaultPanel, c.verticalSide, c.horizontalDeck, c.moduleFront,
     t.background, t.grid, t.outlines, t.fills,
   ].join('|')

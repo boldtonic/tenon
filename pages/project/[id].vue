@@ -726,6 +726,7 @@ const canvasChromeTeleportSelector = computed(() =>
           <LazyProjectDesigner
             v-if="!userNeedsEmailVerification && viewMode === 'assembly' && docRef"
             :ydoc="(docRef as any)"
+            :public-style="publicStyle"
             :selected-modules="selectedModules"
             :zoom-percent="zoomPercent"
             class="min-h-0 flex-1"
