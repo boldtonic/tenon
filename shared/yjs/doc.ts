@@ -20,10 +20,12 @@ import {
   type FurnitureConfig,
   type FurnitureDoc,
   type FurnitureModule,
+  type HandleMode,
   type HandleOrientation,
   type HandlePosition,
   type ModuleType,
 } from '~~/shared/domain/types'
+import { moduleHandleMode, normalizeHandleMode } from '~~/shared/domain/handles'
 
 // Migrations table — each entry mutates the doc in place. Run once, in id order.
 export const MIGRATIONS: { id: string, run(map: Y.Map<unknown>): void }[] = [
@@ -131,7 +133,8 @@ export function ensureInitialized(doc: Y.Doc) {
         }
         const moduleType = module.get('type') as ModuleType
         if (moduleHasFront(moduleType)) {
-          if (typeof module.get('handlesEnabled') !== 'boolean') module.set('handlesEnabled', true)
+          module.set('handleMode', normalizeHandleMode(module.get('handleMode'), module.get('handlesEnabled')))
+          module.delete('handlesEnabled')
           const handlePosition = module.get('handlePosition')
           if (handlePosition !== 'top' && handlePosition !== 'center' && handlePosition !== 'bottom') {
             module.set('handlePosition', DEFAULT_HANDLE_POSITION)
@@ -142,6 +145,7 @@ export function ensureInitialized(doc: Y.Doc) {
           }
         }
         else {
+          module.delete('handleMode')
           module.delete('handlesEnabled')
           module.delete('handlePosition')
           module.delete('handleOrientation')
@@ -193,7 +197,7 @@ export function readFurnitureDoc(doc: Y.Doc): FurnitureDoc {
         m.drawerCount = Math.max(DRAWER_COUNT_MIN, Math.min(DRAWER_COUNT_MAX, Math.round(drawerCount)))
       }
       if (moduleHasFront(type)) {
-        m.handlesEnabled = mm.get('handlesEnabled') !== false
+        m.handleMode = normalizeHandleMode(mm.get('handleMode'), mm.get('handlesEnabled'))
         const handlePosition = mm.get('handlePosition')
         m.handlePosition = handlePosition === 'center' || handlePosition === 'bottom' ? handlePosition : DEFAULT_HANDLE_POSITION
         const handleOrientation = mm.get('handleOrientation')
@@ -221,7 +225,7 @@ export function toYModule(m: FurnitureModule): Y.Map<unknown> {
   y.set('height', m.height)
   if (typeof m.drawerCount === 'number') y.set('drawerCount', m.drawerCount)
   if (moduleHasFront(m.type)) {
-    y.set('handlesEnabled', m.handlesEnabled !== false)
+    y.set('handleMode', moduleHandleMode(m))
     y.set('handlePosition', m.handlePosition ?? DEFAULT_HANDLE_POSITION)
     y.set('handleOrientation', m.handleOrientation ?? defaultHandleOrientation(m.type))
   }
@@ -287,11 +291,13 @@ export function setModuleType(doc: Y.Doc, columnIndex: number, moduleIndex: numb
     if (type === 'drawer' && !m.has('drawerCount')) m.set('drawerCount', DEFAULT_DRAWER_COUNT)
     if (type !== 'drawer' && m.has('drawerCount')) m.delete('drawerCount')
     if (moduleHasFront(type)) {
-      if (typeof m.get('handlesEnabled') !== 'boolean') m.set('handlesEnabled', true)
+      m.set('handleMode', normalizeHandleMode(m.get('handleMode'), m.get('handlesEnabled')))
+      m.delete('handlesEnabled')
       if (!m.has('handlePosition')) m.set('handlePosition', DEFAULT_HANDLE_POSITION)
       if (!m.has('handleOrientation')) m.set('handleOrientation', defaultHandleOrientation(type))
     }
     else {
+      m.delete('handleMode')
       m.delete('handlesEnabled')
       m.delete('handlePosition')
       m.delete('handleOrientation')
@@ -321,10 +327,10 @@ function getYModule(doc: Y.Doc, columnIndex: number, moduleIndex: number): Y.Map
   return modules?.get(moduleIndex)
 }
 
-export function setModuleHandlesEnabled(doc: Y.Doc, columnIndex: number, moduleIndex: number, enabled: boolean) {
+export function setModuleHandleMode(doc: Y.Doc, columnIndex: number, moduleIndex: number, mode: HandleMode) {
   doc.transact(() => {
-    getYModule(doc, columnIndex, moduleIndex)?.set('handlesEnabled', enabled)
-  }, 'setModuleHandlesEnabled')
+    getYModule(doc, columnIndex, moduleIndex)?.set('handleMode', mode)
+  }, 'setModuleHandleMode')
 }
 
 export function setModuleHandlePosition(doc: Y.Doc, columnIndex: number, moduleIndex: number, position: HandlePosition) {

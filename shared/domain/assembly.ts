@@ -11,6 +11,7 @@ import type {
   PanelOperation,
   PanelRole,
 } from '~~/shared/domain/types'
+import { moduleHasHandleHoles } from '~~/shared/domain/handles'
 
 // ---------------------------------------------------------------------------
 // Tunables (mirrors Dt_x5Iy5.js module-level constants)
@@ -513,7 +514,7 @@ function compileDoorOrFrontPanels(module: FurnitureModule, cell: CompiledCellBou
       orientation: 'vertical-xy',
     })
     panels.push(panel)
-    if (module.handlesEnabled !== false) {
+    if (moduleHasHandleHoles(module)) {
       operations.push(makePullHole(panel, singleDoorPull(panel, hinge), diameter, 'a'))
     }
     return { panels, operations }
@@ -542,7 +543,7 @@ function compileDoorOrFrontPanels(module: FurnitureModule, cell: CompiledCellBou
       orientation: 'vertical-xy',
     })
     panels.push(left, right)
-    if (module.handlesEnabled !== false) {
+    if (moduleHasHandleHoles(module)) {
       operations.push(makePullHole(left, pairedDoorPull(left, 'left'), diameter, 'a'))
       operations.push(makePullHole(right, pairedDoorPull(right, 'right'), diameter, 'a'))
     }
@@ -594,7 +595,7 @@ function compileDrawer(module: FurnitureModule, cell: CompiledCellBounds, config
       orientation: 'vertical-xy',
     })
     panels.push(front)
-    if (module.handlesEnabled !== false) {
+    if (moduleHasHandleHoles(module)) {
       const halfGap = config.pullHolePairGap / 2
       const edgeInset = Math.max(config.pullHoleEdgeInset, config.pullHoleDiameter / 2)
       const pairReserve = module.handleOrientation === 'vertical' ? halfGap : 0

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { DEFAULT_FURNITURE_CONFIG, normalizePublicStyle } from '~~/shared/domain/defaults'
-import { HANDLE_FINISH_SPECS, moduleHandlesEnabled, resolveHandleCenter, resolveHandleType } from '~~/shared/domain/handles'
+import { HANDLE_FINISH_SPECS, moduleHasHandleHoles, moduleShowsPhysicalHandle, resolveHandleCenter, resolveHandleType } from '~~/shared/domain/handles'
 import type { FurnitureColumn, FurnitureConfig, FurnitureModule, PublicStyle } from '~~/shared/domain/types'
 import { moduleTypeText } from '~~/shared/i18n/ui-copy'
 
@@ -172,8 +172,7 @@ function drawerHandleStyle(mod: FurnitureModule, drawerIndex: number): Record<st
   const drawerCount = mod.drawerCount ?? 1
   const topM = (drawerIndex / drawerCount) * mod.height
   const bottomM = ((drawerIndex - 1) / drawerCount) * mod.height
-  const isVerticalBar = resolveHandleType(mod, handleStyle.value) === 'bar' && handleOrientation(mod) === 'vertical'
-  const reserve = isVerticalBar ? config.pullHolePairGap / 2 : 0
+  const reserve = handleOrientation(mod) === 'vertical' ? config.pullHolePairGap / 2 : 0
   const edge = Math.max(config.pullHoleEdgeInset, config.pullHoleDiameter / 2)
   const minCentre = bottomM + edge + reserve
   const maxCentre = topM - edge - reserve
@@ -186,6 +185,52 @@ function drawerHandleStyle(mod: FurnitureModule, drawerIndex: number): Record<st
     left: `calc(50% - ${width / 2}px)`,
     bottom: `calc(${pct}% - ${height / 2}px)`,
     ...handleVisualStyle(mod),
+  }
+}
+
+function singleDoorHoleStyle(mod: FurnitureModule, hinge: 'left' | 'right'): Record<string, string> {
+  const diameter = pullDiameterPx()
+  const inset = pullEdgeInsetPx()
+  const horizontal: Record<string, string> = hinge === 'left'
+    ? { right: `${inset - diameter / 2}px` }
+    : { left: `${inset - diameter / 2}px` }
+  return {
+    width: `${diameter}px`,
+    height: `${diameter}px`,
+    bottom: doorHandleBottom(mod, diameter),
+    ...horizontal,
+  }
+}
+
+function doorsHoleStyle(mod: FurnitureModule, side: 'left' | 'right'): Record<string, string> {
+  const diameter = pullDiameterPx()
+  const halfGap = pullPairHalfGapPx()
+  return {
+    width: `${diameter}px`,
+    height: `${diameter}px`,
+    bottom: doorHandleBottom(mod, diameter),
+    left: `calc(50% + ${(side === 'left' ? -halfGap : halfGap) - diameter / 2}px)`,
+  }
+}
+
+function drawerHoleStyle(mod: FurnitureModule, drawerIndex: number, holeIndex: number): Record<string, string> {
+  const config = furnitureConfig.value
+  const drawerCount = mod.drawerCount ?? 1
+  const topM = (drawerIndex / drawerCount) * mod.height
+  const bottomM = ((drawerIndex - 1) / drawerCount) * mod.height
+  const orientation = handleOrientation(mod)
+  const reserve = orientation === 'vertical' ? config.pullHolePairGap / 2 : 0
+  const edge = Math.max(config.pullHoleEdgeInset, config.pullHoleDiameter / 2)
+  const centreM = resolveHandleCenter(bottomM + edge + reserve, topM - edge - reserve, mod.handlePosition)
+  const diameter = pullDiameterPx()
+  const offset = holeIndex === 1 ? -pullPairHalfGapPx() : pullPairHalfGapPx()
+  const xOffset = orientation === 'horizontal' ? offset : 0
+  const yOffset = orientation === 'vertical' ? offset : 0
+  return {
+    width: `${diameter}px`,
+    height: `${diameter}px`,
+    left: `calc(50% + ${xOffset - diameter / 2}px)`,
+    bottom: `calc(${(centreM / mod.height) * 100}% + ${yOffset - diameter / 2}px)`,
   }
 }
 
@@ -247,7 +292,7 @@ function moduleClass(mod: FurnitureModule): string {
                       aria-hidden="true"
                     />
                     <template
-                      v-if="moduleHandlesEnabled(mod)"
+                      v-if="moduleShowsPhysicalHandle(mod)"
                       v-for="i in (mod.drawerCount ?? 1)"
                       :key="`${mod.id}-dr-${i}`"
                     >
@@ -257,28 +302,54 @@ function moduleClass(mod: FurnitureModule): string {
                         :style="drawerHandleStyle(mod, i)"
                       />
                     </template>
+                    <template
+                      v-else-if="moduleHasHandleHoles(mod)"
+                      v-for="i in (mod.drawerCount ?? 1)"
+                      :key="`${mod.id}-dr-holes-${i}`"
+                    >
+                      <div
+                        v-for="holeIndex in 2"
+                        :key="`${mod.id}-dr-hole-${i}-${holeIndex}`"
+                        class="pull-hole-2d absolute rounded-full"
+                        :style="drawerHoleStyle(mod, i, holeIndex)"
+                      />
+                    </template>
                   </template>
 
-                  <div
-                    v-else-if="mod.type === 'left-door' && moduleHandlesEnabled(mod)"
-                    class="absolute"
-                    :class="handleClass(mod)"
-                    :style="singleDoorPullStyle(mod, 'left')"
-                  />
+                  <template v-else-if="mod.type === 'left-door'">
+                    <div
+                      v-if="moduleShowsPhysicalHandle(mod)"
+                      class="absolute"
+                      :class="handleClass(mod)"
+                      :style="singleDoorPullStyle(mod, 'left')"
+                    />
+                    <div
+                      v-else-if="moduleHasHandleHoles(mod)"
+                      class="pull-hole-2d absolute rounded-full"
+                      :style="singleDoorHoleStyle(mod, 'left')"
+                    />
+                  </template>
 
-                  <div
-                    v-else-if="mod.type === 'right-door' && moduleHandlesEnabled(mod)"
-                    class="absolute"
-                    :class="handleClass(mod)"
-                    :style="singleDoorPullStyle(mod, 'right')"
-                  />
+                  <template v-else-if="mod.type === 'right-door'">
+                    <div
+                      v-if="moduleShowsPhysicalHandle(mod)"
+                      class="absolute"
+                      :class="handleClass(mod)"
+                      :style="singleDoorPullStyle(mod, 'right')"
+                    />
+                    <div
+                      v-else-if="moduleHasHandleHoles(mod)"
+                      class="pull-hole-2d absolute rounded-full"
+                      :style="singleDoorHoleStyle(mod, 'right')"
+                    />
+                  </template>
 
                   <template v-else-if="mod.type === 'doors'">
                     <div
                       class="absolute bg-[var(--ui-bg)]"
                       :style="doorSeamStyle()"
                     />
-                    <template v-if="moduleHandlesEnabled(mod)">
+                    <template v-if="moduleShowsPhysicalHandle(mod)">
                       <div
                         class="absolute"
                         :class="handleClass(mod)"
@@ -288,6 +359,16 @@ function moduleClass(mod: FurnitureModule): string {
                         class="absolute"
                         :class="handleClass(mod)"
                         :style="doorsPullStyle(mod, 'right')"
+                      />
+                    </template>
+                    <template v-else-if="moduleHasHandleHoles(mod)">
+                      <div
+                        class="pull-hole-2d absolute rounded-full"
+                        :style="doorsHoleStyle(mod, 'left')"
+                      />
+                      <div
+                        class="pull-hole-2d absolute rounded-full"
+                        :style="doorsHoleStyle(mod, 'right')"
                       />
                     </template>
                   </template>
@@ -337,5 +418,10 @@ function moduleClass(mod: FurnitureModule): string {
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.14),
     0 1px 2px rgb(0 0 0 / 0.28);
+}
+.pull-hole-2d {
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border-accented);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.5);
 }
 </style>

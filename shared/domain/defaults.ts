@@ -1,4 +1,5 @@
 import type { CameraState, FurnitureColumn, FurnitureConfig, FurnitureModule, HandleOrientation, MaterialAssignment, ModuleType, PublicStyle } from './types'
+import { moduleHandleMode } from './handles'
 import { CUSTOM_MATERIAL_ID, DEFAULT_MATERIAL_ASSIGNMENTS, findPreset, MATERIAL_PRESETS } from './materials'
 
 // Default furniture config (Qe in compiled). All values in metres.
@@ -76,7 +77,7 @@ export function defaultModule(type: ModuleType): FurnitureModule {
   const m: FurnitureModule = { id: cryptoRandomId(), type, height: DEFAULT_SHELF_HEIGHT }
   if (type === 'drawer') m.drawerCount = DEFAULT_DRAWER_COUNT
   if (moduleHasFront(type)) {
-    m.handlesEnabled = true
+    m.handleMode = moduleHandleMode(m)
     m.handlePosition = DEFAULT_HANDLE_POSITION
     m.handleOrientation = defaultHandleOrientation(type)
   }

@@ -1,4 +1,4 @@
-import type { FurnitureModule, HandleFinish, HandlePosition, HandleType, PublicStyle } from './types'
+import type { FurnitureModule, HandleFinish, HandleMode, HandlePosition, HandleType, PublicStyle } from './types'
 
 export const HANDLE_FINISH_SPECS: Record<HandleFinish, { color: string, metalness: number, roughness: number }> = {
   graphite: { color: '#34312c', metalness: 0.54, roughness: 0.46 },
@@ -6,8 +6,22 @@ export const HANDLE_FINISH_SPECS: Record<HandleFinish, { color: string, metalnes
   brass: { color: '#b18a4b', metalness: 0.76, roughness: 0.33 },
 }
 
-export function moduleHandlesEnabled(module: FurnitureModule): boolean {
-  return module.type !== 'shelf' && module.handlesEnabled !== false
+export function normalizeHandleMode(value: unknown, legacyEnabled: unknown = undefined): HandleMode {
+  if (value === 'none' || value === 'hole' || value === 'handle') return value
+  return legacyEnabled === false ? 'none' : 'handle'
+}
+
+export function moduleHandleMode(module: FurnitureModule): HandleMode {
+  if (module.type === 'shelf') return 'none'
+  return normalizeHandleMode(module.handleMode, module.handlesEnabled)
+}
+
+export function moduleHasHandleHoles(module: FurnitureModule): boolean {
+  return moduleHandleMode(module) !== 'none'
+}
+
+export function moduleShowsPhysicalHandle(module: FurnitureModule): boolean {
+  return moduleHandleMode(module) === 'handle'
 }
 
 export function resolveHandleType(

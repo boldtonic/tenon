@@ -3,7 +3,8 @@ import type * as Y from 'yjs'
 import type { AiFurnitureDraft, AiFurnitureGenerateResponse } from '~~/shared/domain/ai-furniture'
 import { AI_FURNITURE_PROMPT_MAX_LENGTH } from '~~/shared/domain/ai-furniture'
 import { DEFAULT_COLUMN_WIDTH, DEFAULT_DRAWER_COUNT, DRAWER_COUNT_MAX, DRAWER_COUNT_MIN, DEFAULT_FURNITURE_CONFIG, FURNITURE_CONFIG_WRITABLE_KEYS, MODULE_TYPES } from '~~/shared/domain/defaults'
-import type { FurnitureConfig, FurnitureModule, HandleOrientation, HandlePosition, ModuleType, PublicStyle } from '~~/shared/domain/types'
+import { moduleHandleMode } from '~~/shared/domain/handles'
+import type { FurnitureConfig, FurnitureModule, HandleMode, HandleOrientation, HandlePosition, ModuleType, PublicStyle } from '~~/shared/domain/types'
 import { validateFurnitureDocIssues } from '~~/shared/domain/assembly-validation'
 import { furnitureConfigText, moduleTypeText, uiText as t } from '~~/shared/i18n/ui-copy'
 import {
@@ -17,9 +18,9 @@ import {
   setConfigValue,
   setDrawerCount,
   setModuleHeight,
+  setModuleHandleMode,
   setModuleHandleOrientation,
   setModuleHandlePosition,
-  setModuleHandlesEnabled,
   setModuleType,
 } from '~~/shared/yjs/doc'
 
@@ -440,11 +441,11 @@ const selectedDrawerCountValue = computed(() => {
 
 const selectedHandleModuleInfos = computed(() => selectedModuleInfos.value.filter(info => info.module.type !== 'shelf'))
 
-const selectedHandlesEnabledValue = computed<boolean | '__multiple__'>(() => {
+const selectedHandleModeValue = computed<HandleMode | '__multiple__'>(() => {
   const infos = selectedHandleModuleInfos.value
   if (infos.length === 0) return '__multiple__'
-  const first = infos[0]!.module.handlesEnabled !== false
-  return infos.every(info => (info.module.handlesEnabled !== false) === first) ? first : '__multiple__'
+  const first = moduleHandleMode(infos[0]!.module)
+  return infos.every(info => moduleHandleMode(info.module) === first) ? first : '__multiple__'
 })
 
 const selectedHandlePositionValue = computed<HandlePosition | '__multiple__'>(() => {
@@ -685,9 +686,9 @@ function onSelectedDrawerCountCommit(event: Event) {
   input.value = String(next)
 }
 
-function updateSelectedHandlesEnabled(enabled: boolean) {
+function updateSelectedHandleMode(mode: HandleMode) {
   for (const info of selectedHandleModuleInfos.value) {
-    setModuleHandlesEnabled(props.ydoc, info.columnIndex, info.moduleIndex, enabled)
+    setModuleHandleMode(props.ydoc, info.columnIndex, info.moduleIndex, mode)
   }
 }
 
@@ -860,32 +861,41 @@ if (getCurrentScope()) {
                     </dt>
                     <dd class="min-w-0">
                       <div
-                        class="grid grid-cols-2 rounded-md bg-muted p-0.5"
+                        class="grid grid-cols-3 rounded-md bg-muted p-0.5"
                         role="group"
                         :aria-label="t('handle')"
                       >
                         <button
                           type="button"
                           class="min-h-7 rounded px-2 text-xs font-medium transition-colors"
-                          :class="selectedHandlesEnabledValue === false ? 'bg-elevated text-highlighted shadow-sm' : 'text-muted hover:text-highlighted'"
-                          :aria-pressed="selectedHandlesEnabledValue === false"
-                          @click="updateSelectedHandlesEnabled(false)"
+                          :class="selectedHandleModeValue === 'none' ? 'bg-elevated text-highlighted shadow-sm' : 'text-muted hover:text-highlighted'"
+                          :aria-pressed="selectedHandleModeValue === 'none'"
+                          @click="updateSelectedHandleMode('none')"
                         >
                           {{ t('no') }}
                         </button>
                         <button
                           type="button"
                           class="min-h-7 rounded px-2 text-xs font-medium transition-colors"
-                          :class="selectedHandlesEnabledValue === true ? 'bg-elevated text-highlighted shadow-sm' : 'text-muted hover:text-highlighted'"
-                          :aria-pressed="selectedHandlesEnabledValue === true"
-                          @click="updateSelectedHandlesEnabled(true)"
+                          :class="selectedHandleModeValue === 'hole' ? 'bg-elevated text-highlighted shadow-sm' : 'text-muted hover:text-highlighted'"
+                          :aria-pressed="selectedHandleModeValue === 'hole'"
+                          @click="updateSelectedHandleMode('hole')"
+                        >
+                          {{ t('handleHole') }}
+                        </button>
+                        <button
+                          type="button"
+                          class="min-h-7 rounded px-2 text-xs font-medium transition-colors"
+                          :class="selectedHandleModeValue === 'handle' ? 'bg-elevated text-highlighted shadow-sm' : 'text-muted hover:text-highlighted'"
+                          :aria-pressed="selectedHandleModeValue === 'handle'"
+                          @click="updateSelectedHandleMode('handle')"
                         >
                           {{ t('yes') }}
                         </button>
                       </div>
                     </dd>
 
-                    <template v-if="selectedHandlesEnabledValue !== false">
+                    <template v-if="selectedHandleModeValue !== 'none'">
                       <dt class="self-center text-muted">
                         {{ t('handlePosition') }}
                       </dt>

@@ -17,7 +17,7 @@ import {
 import { makePanelMaterial, type PanelMaterialMode, type PanelMaterialSpec } from '~~/shared/three/materials'
 import { DEFAULT_CAMERA_STATE, hexColorToNumber, normalizePublicStyle } from '~~/shared/domain/defaults'
 import { resolveMaterial, type CabinetPart } from '~~/shared/domain/materials'
-import { HANDLE_FINISH_SPECS } from '~~/shared/domain/handles'
+import { HANDLE_FINISH_SPECS, moduleShowsPhysicalHandle } from '~~/shared/domain/handles'
 import type { CameraState, CompiledPanel, FurnitureDoc, FurnitureModule, HandleOrientation, PanelOperation, PublicStyle } from '~~/shared/domain/types'
 import { uiText as t } from '~~/shared/i18n/ui-copy'
 
@@ -818,6 +818,7 @@ function addBarHandle(
 
 function addPhysicalPullHandles(group: THREE.Group, panel: CompiledPanel, module?: FurnitureModule) {
   if (props.renderMode === 'technical') return
+  if (module && !moduleShowsPhysicalHandle(module)) return
   if (panel.orientation !== 'vertical-xy') return
   if (panel.role !== 'door-front' && panel.role !== 'drawer-front') return
 
