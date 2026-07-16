@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { HandleFinish, HandleType, MaterialAssignment, PublicStyle, RenderStyle } from '~~/shared/domain/types'
+import ProjectHandlePicker from './ProjectHandlePicker.vue'
+import type { MaterialAssignment, PublicStyle, RenderStyle } from '~~/shared/domain/types'
 import { DEFAULT_PUBLIC_STYLE, normalizeHexColor, normalizePublicStyle } from '~~/shared/domain/defaults'
-import { HANDLE_FINISH_SPECS } from '~~/shared/domain/handles'
 import { CABINET_PARTS, type CabinetPart } from '~~/shared/domain/materials'
 import { cabinetPartText, uiText as t } from '~~/shared/i18n/ui-copy'
 
@@ -50,17 +50,6 @@ const mobileTabs = computed<{ value: MobileStyleTab, label: string }[]>(() => [
 const cabinetParts = computed(() =>
   CABINET_PARTS.map(part => ({ ...part, ...cabinetPartText(part.key) })),
 )
-const handleTypeOptions = computed<{ value: HandleType, label: string }[]>(() => [
-  { value: 'auto', label: t('handleAuto') },
-  { value: 'knob', label: t('handleKnob') },
-  { value: 'bar', label: t('handleBar') },
-])
-const handleFinishOptions = computed<{ value: HandleFinish, label: string, color: string }[]>(() => [
-  { value: 'graphite', label: t('handleGraphite'), color: HANDLE_FINISH_SPECS.graphite.color },
-  { value: 'nickel', label: t('handleNickel'), color: HANDLE_FINISH_SPECS.nickel.color },
-  { value: 'brass', label: t('handleBrass'), color: HANDLE_FINISH_SPECS.brass.color },
-])
-
 function setRenderStyle(renderStyle: RenderStyle) {
   model.value = normalizePublicStyle({ ...style.value, renderStyle })
 }
@@ -141,24 +130,13 @@ function setMaterialCustom(part: CabinetPart, customColor: string) {
   })
 }
 
-function setHandleType(type: HandleType) {
+function setHandles(handles: PublicStyle['rendered']['handles']) {
   const current = style.value
   model.value = normalizePublicStyle({
     ...current,
     rendered: {
       ...current.rendered,
-      handles: { ...current.rendered.handles, type },
-    },
-  })
-}
-
-function setHandleFinish(finish: HandleFinish) {
-  const current = style.value
-  model.value = normalizePublicStyle({
-    ...current,
-    rendered: {
-      ...current.rendered,
-      handles: { ...current.rendered.handles, finish },
+      handles,
     },
   })
 }
@@ -262,51 +240,11 @@ function resetActiveStyle() {
                 @update:model-value="setMaterialPreset(part.key, $event)"
                 @update:custom-color="setMaterialCustom(part.key, $event)"
               />
-            </div>
-
-            <div v-if="!isTechnical" class="style-handle-block">
-              <div class="style-section-title-row">
-                <h3 class="style-section-heading">
-                  {{ t('handles') }}
-                </h3>
-                <div class="style-section-divider" />
-              </div>
-              <div class="style-section-controls">
-                <div class="style-control-row">
-                  <span class="style-row-label">{{ t('handleType') }}</span>
-                  <div class="style-handle-type-options" role="group" :aria-label="t('handleType')">
-                    <button
-                      v-for="option in handleTypeOptions"
-                      :key="option.value"
-                      type="button"
-                      class="style-handle-type-button"
-                      :data-active="style.rendered.handles.type === option.value ? '' : undefined"
-                      :aria-pressed="style.rendered.handles.type === option.value"
-                      @click="setHandleType(option.value)"
-                    >
-                      {{ option.label }}
-                    </button>
-                  </div>
-                </div>
-                <div class="style-control-row">
-                  <span class="style-row-label">{{ t('handleFinish') }}</span>
-                  <div class="style-handle-finish-options" role="group" :aria-label="t('handleFinish')">
-                    <button
-                      v-for="option in handleFinishOptions"
-                      :key="option.value"
-                      type="button"
-                      class="style-handle-finish-button"
-                      :data-active="style.rendered.handles.finish === option.value ? '' : undefined"
-                      :aria-label="option.label"
-                      :aria-pressed="style.rendered.handles.finish === option.value"
-                      :title="option.label"
-                      @click="setHandleFinish(option.value)"
-                    >
-                      <span class="style-handle-finish-swatch" :style="{ backgroundColor: option.color }" />
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <ProjectHandlePicker
+                :model-value="style.rendered.handles"
+                variant="row"
+                @update:model-value="setHandles"
+              />
             </div>
           </section>
 
@@ -429,51 +367,11 @@ function resetActiveStyle() {
                   @update:model-value="setMaterialPreset(part.key, $event)"
                   @update:custom-color="setMaterialCustom(part.key, $event)"
                 />
-              </div>
-            </section>
-
-            <section v-if="!isTechnical" class="style-mobile-section style-section-handles">
-              <div class="style-section-title-row">
-                <h3 class="style-section-heading">
-                  {{ t('handles') }}
-                </h3>
-                <div class="style-section-divider" />
-              </div>
-              <div class="style-section-controls">
-                <div class="style-control-row">
-                  <span class="style-row-label">{{ t('handleType') }}</span>
-                  <div class="style-handle-type-options" role="group" :aria-label="t('handleType')">
-                    <button
-                      v-for="option in handleTypeOptions"
-                      :key="option.value"
-                      type="button"
-                      class="style-handle-type-button"
-                      :data-active="style.rendered.handles.type === option.value ? '' : undefined"
-                      :aria-pressed="style.rendered.handles.type === option.value"
-                      @click="setHandleType(option.value)"
-                    >
-                      {{ option.label }}
-                    </button>
-                  </div>
-                </div>
-                <div class="style-control-row">
-                  <span class="style-row-label">{{ t('handleFinish') }}</span>
-                  <div class="style-handle-finish-options" role="group" :aria-label="t('handleFinish')">
-                    <button
-                      v-for="option in handleFinishOptions"
-                      :key="option.value"
-                      type="button"
-                      class="style-handle-finish-button"
-                      :data-active="style.rendered.handles.finish === option.value ? '' : undefined"
-                      :aria-label="option.label"
-                      :aria-pressed="style.rendered.handles.finish === option.value"
-                      :title="option.label"
-                      @click="setHandleFinish(option.value)"
-                    >
-                      <span class="style-handle-finish-swatch" :style="{ backgroundColor: option.color }" />
-                    </button>
-                  </div>
-                </div>
+                <ProjectHandlePicker
+                  :model-value="style.rendered.handles"
+                  variant="row"
+                  @update:model-value="setHandles"
+                />
               </div>
             </section>
 
@@ -610,6 +508,10 @@ function resetActiveStyle() {
           @update:model-value="setMaterialPreset(part.key, $event)"
           @update:custom-color="setMaterialCustom(part.key, $event)"
         />
+        <ProjectHandlePicker
+          :model-value="style.rendered.handles"
+          @update:model-value="setHandles"
+        />
       </div>
 
       <p class="mt-3 mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">
@@ -744,16 +646,8 @@ function resetActiveStyle() {
   order: 1;
 }
 
-.style-sidebar-content .style-section-handles {
-  order: 2;
-}
-
 .style-sidebar-content .style-section-scene {
-  order: 3;
-}
-
-.style-handle-block {
-  margin-top: 16px;
+  order: 2;
 }
 
 .style-mobile-section {
@@ -817,68 +711,6 @@ function resetActiveStyle() {
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.style-handle-type-options,
-.style-handle-finish-options {
-  display: inline-flex;
-  min-width: 0;
-  flex-shrink: 0;
-  align-items: center;
-  gap: 2px;
-  border-radius: 6px;
-  background: color-mix(in oklch, var(--ui-bg-accented) 62%, transparent);
-  padding: 2px;
-}
-
-.style-handle-type-button {
-  height: 22px;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--ui-text-muted);
-  cursor: pointer;
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1;
-  padding: 0 6px;
-  transition: background-color 150ms ease, color 150ms ease;
-}
-
-.style-handle-type-button:hover,
-.style-handle-type-button[data-active] {
-  color: var(--ui-text-highlighted);
-}
-
-.style-handle-type-button[data-active] {
-  background: var(--ui-bg-elevated);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
-}
-
-.style-handle-finish-button {
-  display: inline-flex;
-  width: 24px;
-  height: 24px;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: transparent;
-  cursor: pointer;
-  padding: 0;
-}
-
-.style-handle-finish-button[data-active] {
-  border-color: var(--ui-text-muted);
-  background: var(--ui-bg-elevated);
-}
-
-.style-handle-finish-swatch {
-  width: 14px;
-  height: 14px;
-  border: 1px solid rgb(0 0 0 / 0.2);
-  border-radius: 50%;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.28);
 }
 
 .style-pill-group {

@@ -97,7 +97,7 @@ Current status of handles/pulls:
 - Single-door fronts render a small graphite knob at the existing pull-hole position.
 - The 2D editor/preview now uses the same visual language: drawer bars and door knobs instead of generic hole dots.
 - Diseño now controls handles per selected front module: enabled/disabled, upper/center/lower position, and horizontal/vertical orientation.
-- Estilo now controls the global visual type (`Automático`, `Pomo`, `Barra`) and finish (`Grafito`, `Níquel`, `Latón`).
+- Estilo presents `Tiradores` as a fifth product part alongside body, sides, shelves, and fronts. Its picker combines the global visual type (`Automático`, `Pomo`, `Barra`) and finish (`Grafito`, `Níquel`, `Latón`) in one consistent part-selection pattern.
 - Existing projects normalize to handles enabled, upper placement, contextual orientation, and `Automático · Grafito`, preserving the previous appearance.
 - Disabling handles removes their pull-hole operations from compiled geometry and cutlist output.
 - Type and finish variants remain visual in v1; model-specific drilling patterns and purchasable hardware specifications are a future manufacturing step.
