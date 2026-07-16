@@ -3,7 +3,7 @@ export type HandlePosition = 'top' | 'center' | 'bottom'
 export type HandleHorizontalPosition = 'left' | 'center' | 'right'
 export type HandleOrientation = 'horizontal' | 'vertical'
 export type HandleMode = 'none' | 'hole' | 'handle'
-export type HandleType = 'auto' | 'knob' | 'bar'
+export type HandleType = 'auto' | 'knob' | 'square-knob' | 'bar' | 'square-bar'
 export type HandleFinish = 'graphite' | 'nickel' | 'brass'
 
 export interface FurnitureModule {

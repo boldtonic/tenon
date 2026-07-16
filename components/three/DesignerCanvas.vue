@@ -17,7 +17,7 @@ import {
 import { makePanelMaterial, type PanelMaterialMode, type PanelMaterialSpec } from '~~/shared/three/materials'
 import { DEFAULT_CAMERA_STATE, hexColorToNumber, normalizePublicStyle } from '~~/shared/domain/defaults'
 import { resolveMaterial, type CabinetPart } from '~~/shared/domain/materials'
-import { HANDLE_FINISH_SPECS, moduleShowsPhysicalHandle } from '~~/shared/domain/handles'
+import { HANDLE_FINISH_SPECS, isKnobHandleType, isSquareHandleType, moduleShowsPhysicalHandle } from '~~/shared/domain/handles'
 import type { CameraState, CompiledPanel, FurnitureDoc, FurnitureModule, HandleOrientation, PanelOperation, PublicStyle } from '~~/shared/domain/types'
 import { uiText as t } from '~~/shared/i18n/ui-copy'
 
@@ -701,7 +701,12 @@ function makePullHandleMaterial(): THREE.MeshStandardMaterial {
   })
 }
 
-function makePullHandleStemGeometry(radius: number, depth: number): THREE.CylinderGeometry {
+function makePullHandleStemGeometry(radius: number, depth: number, square = false): THREE.BufferGeometry {
+  if (square) {
+    const geometry = new THREE.BoxGeometry(radius * 2, radius * 2, depth)
+    addOutlineExcludeAttribute(geometry, 0)
+    return geometry
+  }
   const geometry = new THREE.CylinderGeometry(radius, radius * 0.92, depth, 24)
   geometry.rotateX(Math.PI / 2)
   addOutlineExcludeAttribute(geometry, 0)
@@ -714,7 +719,18 @@ function makePullHandleCapGeometry(radius: number): THREE.SphereGeometry {
   return geometry
 }
 
-function makePullBarGeometry(radius: number, length: number): THREE.CylinderGeometry {
+function makeSquarePullHandleCapGeometry(radius: number): THREE.BoxGeometry {
+  const geometry = new THREE.BoxGeometry(radius * 1.72, radius * 1.72, radius * 0.9)
+  addOutlineExcludeAttribute(geometry, 0)
+  return geometry
+}
+
+function makePullBarGeometry(radius: number, length: number, square = false): THREE.BufferGeometry {
+  if (square) {
+    const geometry = new THREE.BoxGeometry(length, radius * 1.7, radius * 1.7)
+    addOutlineExcludeAttribute(geometry, 0)
+    return geometry
+  }
   const geometry = new THREE.CylinderGeometry(radius, radius, length, 32)
   geometry.rotateZ(Math.PI / 2)
   addOutlineExcludeAttribute(geometry, 0)
@@ -726,6 +742,7 @@ function addPullHandleAt(
   panel: CompiledPanel,
   op: PanelOperation,
   center = operationCenter(op),
+  square = false,
 ) {
   const diameter = pullHandleDiameter(panel, op)
   const capRadius = diameter / 2
@@ -733,16 +750,19 @@ function addPullHandleAt(
   const faceZ = panel.thickness / 2 + PULL_HANDLE_FACE_GAP
   const material = makePullHandleMaterial()
 
-  const stem = new THREE.Mesh(makePullHandleStemGeometry(stemRadius, PULL_HANDLE_STEM_DEPTH), material)
+  const stem = new THREE.Mesh(makePullHandleStemGeometry(stemRadius, PULL_HANDLE_STEM_DEPTH, square), material)
   stem.position.set(center.x, center.y, faceZ + PULL_HANDLE_STEM_DEPTH / 2)
   stem.castShadow = true
   stem.receiveShadow = true
   stem.name = `pull-handle-stem:${op.id}`
   group.add(stem)
 
-  const cap = new THREE.Mesh(makePullHandleCapGeometry(capRadius), material)
-  cap.scale.z = 0.5
-  cap.position.set(center.x, center.y, faceZ + PULL_HANDLE_STEM_DEPTH + capRadius * 0.38)
+  const cap = new THREE.Mesh(
+    square ? makeSquarePullHandleCapGeometry(capRadius) : makePullHandleCapGeometry(capRadius),
+    material,
+  )
+  if (!square) cap.scale.z = 0.5
+  cap.position.set(center.x, center.y, faceZ + PULL_HANDLE_STEM_DEPTH + capRadius * (square ? 0.45 : 0.38))
   cap.castShadow = true
   cap.receiveShadow = true
   cap.name = `pull-handle-cap:${op.id}`
@@ -754,6 +774,7 @@ function addBarHandle(
   panel: CompiledPanel,
   ops: PanelOperation[],
   orientation: HandleOrientation,
+  square = false,
 ) {
   const axis = orientation === 'vertical' ? 'y' : 'x'
   const centers = ops
@@ -799,7 +820,7 @@ function addBarHandle(
 
   for (const [index, { op, center }] of [start, end].entries()) {
     const stemDepth = Math.max(0.004, barZ - faceZ)
-    const stem = new THREE.Mesh(makePullHandleStemGeometry(stemRadius, stemDepth), material)
+    const stem = new THREE.Mesh(makePullHandleStemGeometry(stemRadius, stemDepth, square), material)
     stem.position.set(center.x, center.y, faceZ + stemDepth / 2)
     stem.castShadow = true
     stem.receiveShadow = true
@@ -807,7 +828,7 @@ function addBarHandle(
     group.add(stem)
   }
 
-  const bar = new THREE.Mesh(makePullBarGeometry(radius, length), material)
+  const bar = new THREE.Mesh(makePullBarGeometry(radius, length, square), material)
   bar.position.set((start.center.x + end.center.x) / 2, (start.center.y + end.center.y) / 2, barZ)
   if (orientation === 'vertical') bar.rotation.z = Math.PI / 2
   bar.castShadow = true
@@ -834,8 +855,9 @@ function addPhysicalPullHandles(group: THREE.Group, panel: CompiledPanel, module
   const orientation = module?.handleOrientation
     ?? (panel.role === 'drawer-front' ? 'horizontal' : 'vertical')
 
-  if (handleType === 'bar') {
-    addBarHandle(handles, panel, pullOps, orientation)
+  const square = isSquareHandleType(handleType)
+  if (!isKnobHandleType(handleType)) {
+    addBarHandle(handles, panel, pullOps, orientation, square)
   }
   else {
     const center = pullOps.reduce((sum, op) => {
@@ -844,7 +866,7 @@ function addPhysicalPullHandles(group: THREE.Group, panel: CompiledPanel, module
     }, { x: 0, y: 0 })
     center.x /= pullOps.length
     center.y /= pullOps.length
-    addPullHandleAt(handles, panel, pullOps[0]!, center)
+    addPullHandleAt(handles, panel, pullOps[0]!, center, square)
   }
   group.add(handles)
 }

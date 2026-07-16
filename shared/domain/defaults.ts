@@ -217,7 +217,13 @@ function normalizeRenderedHandles(input: unknown): PublicStyle['rendered']['hand
   const source = input && typeof input === 'object' ? input as Partial<PublicStyle['rendered']['handles']> : {}
   const fallback = DEFAULT_PUBLIC_STYLE.rendered.handles
   return {
-    type: source.type === 'knob' || source.type === 'bar' || source.type === 'auto' ? source.type : fallback.type,
+    type: source.type === 'knob'
+      || source.type === 'square-knob'
+      || source.type === 'bar'
+      || source.type === 'square-bar'
+      || source.type === 'auto'
+      ? source.type
+      : fallback.type,
     finish: source.finish === 'nickel' || source.finish === 'brass' || source.finish === 'graphite' ? source.finish : fallback.finish,
   }
 }

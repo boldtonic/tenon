@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { horizontalHandleStyle, pairedDoorHorizontalStyle } from '~~/components/project/handle-2d-layout'
 import { DEFAULT_FURNITURE_CONFIG, normalizePublicStyle } from '~~/shared/domain/defaults'
-import { HANDLE_FINISH_SPECS, moduleHasHandleHoles, moduleShowsPhysicalHandle, resolveHandleCenter, resolveHandleType } from '~~/shared/domain/handles'
+import { HANDLE_FINISH_SPECS, isKnobHandleType, isSquareHandleType, moduleHasHandleHoles, moduleShowsPhysicalHandle, resolveHandleCenter, resolveHandleType } from '~~/shared/domain/handles'
 import type { FurnitureColumn, FurnitureConfig, FurnitureModule, PublicStyle } from '~~/shared/domain/types'
 import { moduleTypeText, uiText as t } from '~~/shared/i18n/ui-copy'
 
@@ -201,7 +201,7 @@ function handleOrientation(mod: FurnitureModule) {
 
 function handleDimensions(mod: FurnitureModule) {
   const d = pullDiameterPx()
-  if (resolveHandleType(mod, handleStyle.value) === 'knob') return { width: d, height: d }
+  if (isKnobHandleType(resolveHandleType(mod, handleStyle.value))) return { width: d, height: d }
   const length = Math.max(
     Math.round(d * 2.6),
     Math.round((props.config.pullHolePairGap + props.config.pullHoleDiameter * 1.15) * pxPerMeter.value),
@@ -217,9 +217,10 @@ function handleVisualStyle(mod: FurnitureModule): Record<string, string> {
 }
 
 function handleClass(mod: FurnitureModule): string {
-  return resolveHandleType(mod, handleStyle.value) === 'knob'
-    ? 'pull-knob-2d rounded-full'
-    : 'pull-bar-2d'
+  const type = resolveHandleType(mod, handleStyle.value)
+  const family = isKnobHandleType(type) ? 'pull-knob-2d' : 'pull-bar-2d'
+  const shape = isSquareHandleType(type) ? 'pull-square-2d' : 'pull-round-2d'
+  return `${family} ${shape}`
 }
 
 function doorHandleBottom(mod: FurnitureModule, handleHeight: number): string {
@@ -940,10 +941,15 @@ function addButtonMarginTop(boundaryIndex: number): string {
 }
 .pull-bar-2d {
   border: 1px solid rgb(255 255 255 / 0.16);
-  border-radius: 9999px;
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.14),
     0 1px 2px rgb(0 0 0 / 0.28);
+}
+.pull-round-2d {
+  border-radius: 9999px;
+}
+.pull-square-2d {
+  border-radius: 2px;
 }
 .pull-hole-2d {
   background: var(--ui-bg);

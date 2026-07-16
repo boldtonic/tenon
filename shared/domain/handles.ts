@@ -43,6 +43,14 @@ export function resolveHandleType(
   return module.type === 'drawer' ? 'bar' : 'knob'
 }
 
+export function isKnobHandleType(type: Exclude<HandleType, 'auto'>): boolean {
+  return type === 'knob' || type === 'square-knob'
+}
+
+export function isSquareHandleType(type: Exclude<HandleType, 'auto'>): boolean {
+  return type === 'square-knob' || type === 'square-bar'
+}
+
 export function resolveHandleCenter(
   min: number,
   max: number,

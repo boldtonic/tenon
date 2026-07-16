@@ -8,8 +8,8 @@ vi.mock('three-bvh-csg', () => ({
 }))
 
 import { compileAssembly } from '~~/shared/domain/assembly'
-import { DEFAULT_FURNITURE_CONFIG, normalizePublicStyle } from '~~/shared/domain/defaults'
-import { moduleHandleHorizontalPosition, moduleHasHandleHoles, moduleShowsPhysicalHandle, resolveHandleType } from '~~/shared/domain/handles'
+import { DEFAULT_FURNITURE_CONFIG, DEFAULT_PUBLIC_STYLE, normalizePublicStyle } from '~~/shared/domain/defaults'
+import { isKnobHandleType, isSquareHandleType, moduleHandleHorizontalPosition, moduleHasHandleHoles, moduleShowsPhysicalHandle, resolveHandleType } from '~~/shared/domain/handles'
 import { DESIGN_SCHEMA_VERSION, type FurnitureDoc, type FurnitureModule } from '~~/shared/domain/types'
 import {
   ensureInitialized,
@@ -41,6 +41,28 @@ describe('handle configuration', () => {
     expect(style.rendered.handles).toEqual({ type: 'auto', finish: 'graphite' })
     expect(resolveHandleType({ id: 'drawer', type: 'drawer', height: 0.3 }, style.rendered.handles)).toBe('bar')
     expect(resolveHandleType({ id: 'door', type: 'left-door', height: 0.3 }, style.rendered.handles)).toBe('knob')
+  })
+
+  it('normalizes and classifies the square handle variants', () => {
+    const squareKnobStyle = normalizePublicStyle({
+      rendered: {
+        ...DEFAULT_PUBLIC_STYLE.rendered,
+        handles: { type: 'square-knob', finish: 'nickel' },
+      },
+    })
+    const squareBarStyle = normalizePublicStyle({
+      rendered: {
+        ...DEFAULT_PUBLIC_STYLE.rendered,
+        handles: { type: 'square-bar', finish: 'brass' },
+      },
+    })
+
+    expect(squareKnobStyle.rendered.handles).toEqual({ type: 'square-knob', finish: 'nickel' })
+    expect(squareBarStyle.rendered.handles).toEqual({ type: 'square-bar', finish: 'brass' })
+    expect(isKnobHandleType('square-knob')).toBe(true)
+    expect(isKnobHandleType('square-bar')).toBe(false)
+    expect(isSquareHandleType('square-knob')).toBe(true)
+    expect(isSquareHandleType('square-bar')).toBe(true)
   })
 
   it('normalizes old Yjs modules to physical handles and contextual orientation', () => {
