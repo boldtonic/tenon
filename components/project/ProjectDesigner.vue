@@ -741,9 +741,9 @@ if (getCurrentScope()) {
       class="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-4 sm:px-3 sm:pb-3 sm:pt-10"
     >
       <div
-        class="pointer-events-auto flex max-h-[min(11rem,30dvh)] min-h-0 w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-elevated shadow-lg ring-1 ring-default/60 sm:max-h-[min(16rem,42vh)]"
+        class="pointer-events-auto max-h-[min(70dvh,32rem)] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-xl bg-elevated shadow-lg ring-1 ring-default/60 sm:max-h-none sm:overflow-visible"
       >
-        <div class="inspector-root grid min-h-0 min-w-0 flex-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-muted">
+        <div class="inspector-root min-w-0 bg-elevated">
           <div
             v-if="visibleIssues.length > 0"
             class="px-3 py-3 sm:px-4"
@@ -762,12 +762,12 @@ if (getCurrentScope()) {
 
           <div
             v-if="selectedCount > 0"
-            class="min-h-0 overflow-auto p-3 sm:p-4"
+            class="p-3 sm:p-4"
           >
             <div
               class="grid gap-3"
             >
-              <article class="grid gap-3 rounded-lg bg-default p-3 text-sm shadow-sm">
+              <article class="grid gap-3 text-sm">
                 <div class="flex min-w-0 items-center justify-between gap-2">
                   <h2 class="min-w-0 text-balance font-medium text-highlighted tabular-nums">
                     {{ selectedCount }} {{ selectedCount === 1 ? t('selectedOne') : t('selectedMany') }}
