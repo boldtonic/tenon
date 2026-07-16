@@ -1,4 +1,4 @@
-import type { FurnitureModule, HandleFinish, HandleMode, HandlePosition, HandleType, PublicStyle } from './types'
+import type { FurnitureModule, HandleFinish, HandleHorizontalPosition, HandleMode, HandlePosition, HandleType, ModuleType, PublicStyle } from './types'
 
 export const HANDLE_FINISH_SPECS: Record<HandleFinish, { color: string, metalness: number, roughness: number }> = {
   graphite: { color: '#34312c', metalness: 0.54, roughness: 0.46 },
@@ -22,6 +22,17 @@ export function moduleHasHandleHoles(module: FurnitureModule): boolean {
 
 export function moduleShowsPhysicalHandle(module: FurnitureModule): boolean {
   return moduleHandleMode(module) === 'handle'
+}
+
+export function normalizeHandleHorizontalPosition(value: unknown, moduleType: ModuleType): HandleHorizontalPosition {
+  if (value === 'left' || value === 'center' || value === 'right') return value
+  if (moduleType === 'left-door') return 'right'
+  if (moduleType === 'right-door') return 'left'
+  return 'center'
+}
+
+export function moduleHandleHorizontalPosition(module: FurnitureModule): HandleHorizontalPosition {
+  return normalizeHandleHorizontalPosition(module.handleHorizontalPosition, module.type)
 }
 
 export function resolveHandleType(

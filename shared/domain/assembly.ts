@@ -11,7 +11,7 @@ import type {
   PanelOperation,
   PanelRole,
 } from '~~/shared/domain/types'
-import { moduleHasHandleHoles } from '~~/shared/domain/handles'
+import { moduleHandleHorizontalPosition, moduleHasHandleHoles } from '~~/shared/domain/handles'
 
 // ---------------------------------------------------------------------------
 // Tunables (mirrors Dt_x5Iy5.js module-level constants)
@@ -488,15 +488,27 @@ function compileDoorOrFrontPanels(module: FurnitureModule, cell: CompiledCellBou
     return module.handlePosition === 'bottom' ? min : max
   }
 
-  function singleDoorPull(panel: CompiledPanel, hinge: 'left' | 'right') {
-    const x = hinge === 'left' ? panel.width / 2 - inset : -panel.width / 2 + inset
+  function horizontalPullCenter(panelWidth: number, pairReserve = 0) {
+    const edgeInset = Math.max(inset, diameter / 2)
+    const min = -panelWidth / 2 + edgeInset + pairReserve
+    const max = panelWidth / 2 - edgeInset - pairReserve
+    const horizontalPosition = moduleHandleHorizontalPosition(module)
+    if (horizontalPosition === 'center') return Math.max(min, Math.min(max, 0))
+    return horizontalPosition === 'left' ? min : max
+  }
+
+  function singleDoorPull(panel: CompiledPanel) {
+    const x = horizontalPullCenter(panel.width)
     const y = handleCenterY(panel.height)
     return { x, y }
   }
 
   function pairedDoorPull(panel: CompiledPanel, side: 'left' | 'right') {
+    const horizontalPosition = moduleHandleHorizontalPosition(module)
     const xFromCenter = panel.width / 2 + frontClearance - config.pullHolePairGap / 2
-    const x = side === 'left' ? xFromCenter : -xFromCenter
+    const x = horizontalPosition === 'center'
+      ? side === 'left' ? xFromCenter : -xFromCenter
+      : horizontalPullCenter(panel.width)
     const y = handleCenterY(panel.height)
     return { x, y }
   }
@@ -515,7 +527,7 @@ function compileDoorOrFrontPanels(module: FurnitureModule, cell: CompiledCellBou
     })
     panels.push(panel)
     if (moduleHasHandleHoles(module)) {
-      operations.push(makePullHole(panel, singleDoorPull(panel, hinge), diameter, 'a'))
+      operations.push(makePullHole(panel, singleDoorPull(panel), diameter, 'a'))
     }
     return { panels, operations }
   }
@@ -598,15 +610,23 @@ function compileDrawer(module: FurnitureModule, cell: CompiledCellBounds, config
     if (moduleHasHandleHoles(module)) {
       const halfGap = config.pullHolePairGap / 2
       const edgeInset = Math.max(config.pullHoleEdgeInset, config.pullHoleDiameter / 2)
-      const pairReserve = module.handleOrientation === 'vertical' ? halfGap : 0
-      const minY = -frontHeight / 2 + edgeInset + pairReserve
-      const maxY = frontHeight / 2 - edgeInset - pairReserve
+      const orientation = module.handleOrientation ?? 'horizontal'
+      const verticalReserve = orientation === 'vertical' ? halfGap : 0
+      const minY = -frontHeight / 2 + edgeInset + verticalReserve
+      const maxY = frontHeight / 2 - edgeInset - verticalReserve
       const pullY = module.handlePosition === 'center'
         ? Math.max(minY, Math.min(maxY, 0))
         : module.handlePosition === 'bottom' ? minY : maxY
-      const centers = module.handleOrientation === 'vertical'
-        ? [{ x: 0, y: pullY - halfGap }, { x: 0, y: pullY + halfGap }]
-        : [{ x: -halfGap, y: pullY }, { x: halfGap, y: pullY }]
+      const horizontalReserve = orientation === 'horizontal' ? halfGap : 0
+      const minX = -front.width / 2 + edgeInset + horizontalReserve
+      const maxX = front.width / 2 - edgeInset - horizontalReserve
+      const horizontalPosition = moduleHandleHorizontalPosition(module)
+      const pullX = horizontalPosition === 'center'
+        ? Math.max(minX, Math.min(maxX, 0))
+        : horizontalPosition === 'left' ? minX : maxX
+      const centers = orientation === 'vertical'
+        ? [{ x: pullX, y: pullY - halfGap }, { x: pullX, y: pullY + halfGap }]
+        : [{ x: pullX - halfGap, y: pullY }, { x: pullX + halfGap, y: pullY }]
       operations.push(
         makePullHole(front, centers[0]!, config.pullHoleDiameter, 'left'),
         makePullHole(front, centers[1]!, config.pullHoleDiameter, 'right'),

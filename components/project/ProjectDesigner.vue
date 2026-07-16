@@ -3,8 +3,8 @@ import type * as Y from 'yjs'
 import type { AiFurnitureDraft, AiFurnitureGenerateResponse } from '~~/shared/domain/ai-furniture'
 import { AI_FURNITURE_PROMPT_MAX_LENGTH } from '~~/shared/domain/ai-furniture'
 import { DEFAULT_COLUMN_WIDTH, DEFAULT_DRAWER_COUNT, DRAWER_COUNT_MAX, DRAWER_COUNT_MIN, DEFAULT_FURNITURE_CONFIG, FURNITURE_CONFIG_WRITABLE_KEYS, MODULE_TYPES } from '~~/shared/domain/defaults'
-import { moduleHandleMode } from '~~/shared/domain/handles'
-import type { FurnitureConfig, FurnitureModule, HandleMode, HandleOrientation, HandlePosition, ModuleType, PublicStyle } from '~~/shared/domain/types'
+import { moduleHandleHorizontalPosition, moduleHandleMode } from '~~/shared/domain/handles'
+import type { FurnitureConfig, FurnitureModule, HandleHorizontalPosition, HandleMode, HandleOrientation, HandlePosition, ModuleType, PublicStyle } from '~~/shared/domain/types'
 import { validateFurnitureDocIssues } from '~~/shared/domain/assembly-validation'
 import { furnitureConfigText, moduleTypeText, uiText as t } from '~~/shared/i18n/ui-copy'
 import {
@@ -20,7 +20,7 @@ import {
   setModuleHeight,
   setModuleHandleMode,
   setModuleHandleOrientation,
-  setModuleHandlePosition,
+  setModuleHandlePlacement,
   setModuleType,
 } from '~~/shared/yjs/doc'
 
@@ -448,11 +448,15 @@ const selectedHandleModeValue = computed<HandleMode | '__multiple__'>(() => {
   return infos.every(info => moduleHandleMode(info.module) === first) ? first : '__multiple__'
 })
 
-const selectedHandlePositionValue = computed<HandlePosition | '__multiple__'>(() => {
+type HandlePlacementKey = `${HandlePosition}-${HandleHorizontalPosition}`
+
+const selectedHandlePlacementValue = computed<HandlePlacementKey | '__multiple__'>(() => {
   const infos = selectedHandleModuleInfos.value
   if (infos.length === 0) return '__multiple__'
-  const first = infos[0]!.module.handlePosition ?? 'top'
-  return infos.every(info => (info.module.handlePosition ?? 'top') === first) ? first : '__multiple__'
+  const placement = (module: FurnitureModule): HandlePlacementKey =>
+    `${module.handlePosition ?? 'top'}-${moduleHandleHorizontalPosition(module)}`
+  const first = placement(infos[0]!.module)
+  return infos.every(info => placement(info.module) === first) ? first : '__multiple__'
 })
 
 const selectedHandleOrientationValue = computed<HandleOrientation | '__multiple__'>(() => {
@@ -463,11 +467,16 @@ const selectedHandleOrientationValue = computed<HandleOrientation | '__multiple_
   return infos.every(info => orientation(info.module) === first) ? first : '__multiple__'
 })
 
-const selectedHandlePositionItems = computed(() => [
-  { value: '__multiple__', label: t('multiple') },
-  { value: 'top', label: t('handleTop') },
-  { value: 'center', label: t('handleCenter') },
-  { value: 'bottom', label: t('handleBottom') },
+const handlePlacementOptions = computed<{ key: HandlePlacementKey, vertical: HandlePosition, horizontal: HandleHorizontalPosition, icon: string, label: string }[]>(() => [
+  { key: 'top-left', vertical: 'top', horizontal: 'left', icon: 'i-lucide-arrow-up-left', label: t('handlePositionTopLeft') },
+  { key: 'top-center', vertical: 'top', horizontal: 'center', icon: 'i-lucide-arrow-up', label: t('handlePositionTopCenter') },
+  { key: 'top-right', vertical: 'top', horizontal: 'right', icon: 'i-lucide-arrow-up-right', label: t('handlePositionTopRight') },
+  { key: 'center-left', vertical: 'center', horizontal: 'left', icon: 'i-lucide-arrow-left', label: t('handlePositionCenterLeft') },
+  { key: 'center-center', vertical: 'center', horizontal: 'center', icon: 'i-lucide-circle-dot', label: t('handlePositionCenter') },
+  { key: 'center-right', vertical: 'center', horizontal: 'right', icon: 'i-lucide-arrow-right', label: t('handlePositionCenterRight') },
+  { key: 'bottom-left', vertical: 'bottom', horizontal: 'left', icon: 'i-lucide-arrow-down-left', label: t('handlePositionBottomLeft') },
+  { key: 'bottom-center', vertical: 'bottom', horizontal: 'center', icon: 'i-lucide-arrow-down', label: t('handlePositionBottomCenter') },
+  { key: 'bottom-right', vertical: 'bottom', horizontal: 'right', icon: 'i-lucide-arrow-down-right', label: t('handlePositionBottomRight') },
 ])
 
 const selectedTypeItems = computed(() => [
@@ -692,10 +701,9 @@ function updateSelectedHandleMode(mode: HandleMode) {
   }
 }
 
-function onSelectedHandlePositionChange(value: string) {
-  if (value !== 'top' && value !== 'center' && value !== 'bottom') return
+function updateSelectedHandlePlacement(vertical: HandlePosition, horizontal: HandleHorizontalPosition) {
   for (const info of selectedHandleModuleInfos.value) {
-    setModuleHandlePosition(props.ydoc, info.columnIndex, info.moduleIndex, value)
+    setModuleHandlePlacement(props.ydoc, info.columnIndex, info.moduleIndex, vertical, horizontal)
   }
 }
 
@@ -900,14 +908,25 @@ if (getCurrentScope()) {
                         {{ t('handlePosition') }}
                       </dt>
                       <dd class="min-w-0">
-                        <USelect
-                          :model-value="selectedHandlePositionValue"
-                          :items="selectedHandlePositionItems"
-                          value-key="value"
-                          class="w-full"
-                          size="xs"
-                          @update:model-value="onSelectedHandlePositionChange"
-                        />
+                        <div
+                          class="grid w-full grid-cols-9 gap-0.5 rounded-md bg-muted p-0.5"
+                          role="group"
+                          :aria-label="t('handlePosition')"
+                        >
+                          <button
+                            v-for="option in handlePlacementOptions"
+                            :key="option.key"
+                            type="button"
+                            class="grid min-h-7 min-w-0 place-items-center rounded transition-colors"
+                            :class="selectedHandlePlacementValue === option.key ? 'bg-elevated text-highlighted shadow-sm' : 'text-muted hover:text-highlighted'"
+                            :aria-label="option.label"
+                            :title="option.label"
+                            :aria-pressed="selectedHandlePlacementValue === option.key"
+                            @click="updateSelectedHandlePlacement(option.vertical, option.horizontal)"
+                          >
+                            <UIcon :name="option.icon" class="size-3.5" />
+                          </button>
+                        </div>
                       </dd>
 
                       <dt class="self-center text-muted">

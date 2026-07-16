@@ -1,5 +1,5 @@
 import type { CameraState, FurnitureColumn, FurnitureConfig, FurnitureModule, HandleOrientation, MaterialAssignment, ModuleType, PublicStyle } from './types'
-import { moduleHandleMode } from './handles'
+import { moduleHandleHorizontalPosition, moduleHandleMode } from './handles'
 import { CUSTOM_MATERIAL_ID, DEFAULT_MATERIAL_ASSIGNMENTS, findPreset, MATERIAL_PRESETS } from './materials'
 
 // Default furniture config (Qe in compiled). All values in metres.
@@ -79,6 +79,7 @@ export function defaultModule(type: ModuleType): FurnitureModule {
   if (moduleHasFront(type)) {
     m.handleMode = moduleHandleMode(m)
     m.handlePosition = DEFAULT_HANDLE_POSITION
+    m.handleHorizontalPosition = moduleHandleHorizontalPosition(m)
     m.handleOrientation = defaultHandleOrientation(type)
   }
   return m

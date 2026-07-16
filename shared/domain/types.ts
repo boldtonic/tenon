@@ -1,5 +1,6 @@
 export type ModuleType = 'shelf' | 'drawer' | 'doors' | 'left-door' | 'right-door'
 export type HandlePosition = 'top' | 'center' | 'bottom'
+export type HandleHorizontalPosition = 'left' | 'center' | 'right'
 export type HandleOrientation = 'horizontal' | 'vertical'
 export type HandleMode = 'none' | 'hole' | 'handle'
 export type HandleType = 'auto' | 'knob' | 'bar'
@@ -14,6 +15,7 @@ export interface FurnitureModule {
   /** Legacy import compatibility. New documents persist handleMode instead. */
   handlesEnabled?: boolean
   handlePosition?: HandlePosition
+  handleHorizontalPosition?: HandleHorizontalPosition
   handleOrientation?: HandleOrientation
 }
 
@@ -258,6 +260,6 @@ export const PANEL_ROLE_SHORT_CODE: Record<PanelRole, string> = {
   'drawer-bottom': 'DBM',
 }
 
-export const DESIGN_SCHEMA_VERSION = 5
+export const DESIGN_SCHEMA_VERSION = 6
 export const ASSEMBLY_COMPILER_VERSION = 1
 export const TECHNICAL_RENDERER_VERSION = 1

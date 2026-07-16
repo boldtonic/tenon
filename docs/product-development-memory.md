@@ -96,9 +96,9 @@ Current status of handles/pulls:
 - Drawers render a short horizontal graphite pull using the existing pair of pull-hole positions as supports.
 - Single-door fronts render a small graphite knob at the existing pull-hole position.
 - The 2D editor/preview now uses the same visual language: drawer bars and door knobs instead of generic hole dots.
-- Diseño now controls handles per selected front module with three explicit outcomes: `No` removes both machining and hardware, `Hueco` keeps the drilled opening without physical hardware, and `Sí` keeps both. Position and horizontal/vertical orientation apply to `Hueco` and `Sí`.
+- Diseño now controls handles per selected front module with three explicit outcomes: `No` removes both machining and hardware, `Hueco` keeps the drilled opening without physical hardware, and `Sí` keeps both. A compact nine-point anchor selector controls vertical and horizontal placement independently, while handle orientation remains a separate choice; both apply to `Hueco` and `Sí`.
 - Estilo presents `Tiradores` as a fifth product part alongside body, sides, shelves, and fronts. Its picker combines the global visual type (`Automático`, `Pomo`, `Barra`) and finish (`Grafito`, `Níquel`, `Latón`) in one consistent part-selection pattern.
-- Existing projects normalize to handles enabled, upper placement, contextual orientation, and `Automático · Grafito`, preserving the previous appearance.
+- Existing projects normalize to handles enabled, upper placement, contextual horizontal placement (centered drawers/double doors and single-door handles opposite their hinges), contextual orientation, and `Automático · Grafito`, preserving the previous appearance.
 - `No` removes pull-hole operations from compiled geometry and cutlist output; `Hueco` deliberately retains those manufacturing operations.
 - Type and finish variants remain visual in v1; model-specific drilling patterns and purchasable hardware specifications are a future manufacturing step.
 

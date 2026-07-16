@@ -20,12 +20,13 @@ import {
   type FurnitureConfig,
   type FurnitureDoc,
   type FurnitureModule,
+  type HandleHorizontalPosition,
   type HandleMode,
   type HandleOrientation,
   type HandlePosition,
   type ModuleType,
 } from '~~/shared/domain/types'
-import { moduleHandleMode, normalizeHandleMode } from '~~/shared/domain/handles'
+import { moduleHandleHorizontalPosition, moduleHandleMode, normalizeHandleHorizontalPosition, normalizeHandleMode } from '~~/shared/domain/handles'
 
 // Migrations table — each entry mutates the doc in place. Run once, in id order.
 export const MIGRATIONS: { id: string, run(map: Y.Map<unknown>): void }[] = [
@@ -139,6 +140,10 @@ export function ensureInitialized(doc: Y.Doc) {
           if (handlePosition !== 'top' && handlePosition !== 'center' && handlePosition !== 'bottom') {
             module.set('handlePosition', DEFAULT_HANDLE_POSITION)
           }
+          module.set(
+            'handleHorizontalPosition',
+            normalizeHandleHorizontalPosition(module.get('handleHorizontalPosition'), moduleType),
+          )
           const handleOrientation = module.get('handleOrientation')
           if (handleOrientation !== 'horizontal' && handleOrientation !== 'vertical') {
             module.set('handleOrientation', defaultHandleOrientation(moduleType))
@@ -148,6 +153,7 @@ export function ensureInitialized(doc: Y.Doc) {
           module.delete('handleMode')
           module.delete('handlesEnabled')
           module.delete('handlePosition')
+          module.delete('handleHorizontalPosition')
           module.delete('handleOrientation')
         }
       })
@@ -200,6 +206,7 @@ export function readFurnitureDoc(doc: Y.Doc): FurnitureDoc {
         m.handleMode = normalizeHandleMode(mm.get('handleMode'), mm.get('handlesEnabled'))
         const handlePosition = mm.get('handlePosition')
         m.handlePosition = handlePosition === 'center' || handlePosition === 'bottom' ? handlePosition : DEFAULT_HANDLE_POSITION
+        m.handleHorizontalPosition = normalizeHandleHorizontalPosition(mm.get('handleHorizontalPosition'), type)
         const handleOrientation = mm.get('handleOrientation')
         m.handleOrientation = handleOrientation === 'horizontal' || handleOrientation === 'vertical'
           ? handleOrientation
@@ -227,6 +234,7 @@ export function toYModule(m: FurnitureModule): Y.Map<unknown> {
   if (moduleHasFront(m.type)) {
     y.set('handleMode', moduleHandleMode(m))
     y.set('handlePosition', m.handlePosition ?? DEFAULT_HANDLE_POSITION)
+    y.set('handleHorizontalPosition', moduleHandleHorizontalPosition(m))
     y.set('handleOrientation', m.handleOrientation ?? defaultHandleOrientation(m.type))
   }
   return y
@@ -294,12 +302,14 @@ export function setModuleType(doc: Y.Doc, columnIndex: number, moduleIndex: numb
       m.set('handleMode', normalizeHandleMode(m.get('handleMode'), m.get('handlesEnabled')))
       m.delete('handlesEnabled')
       if (!m.has('handlePosition')) m.set('handlePosition', DEFAULT_HANDLE_POSITION)
+      m.set('handleHorizontalPosition', normalizeHandleHorizontalPosition(m.get('handleHorizontalPosition'), type))
       if (!m.has('handleOrientation')) m.set('handleOrientation', defaultHandleOrientation(type))
     }
     else {
       m.delete('handleMode')
       m.delete('handlesEnabled')
       m.delete('handlePosition')
+      m.delete('handleHorizontalPosition')
       m.delete('handleOrientation')
     }
   }, 'setModuleType')
@@ -333,10 +343,18 @@ export function setModuleHandleMode(doc: Y.Doc, columnIndex: number, moduleIndex
   }, 'setModuleHandleMode')
 }
 
-export function setModuleHandlePosition(doc: Y.Doc, columnIndex: number, moduleIndex: number, position: HandlePosition) {
+export function setModuleHandlePlacement(
+  doc: Y.Doc,
+  columnIndex: number,
+  moduleIndex: number,
+  vertical: HandlePosition,
+  horizontal: HandleHorizontalPosition,
+) {
   doc.transact(() => {
-    getYModule(doc, columnIndex, moduleIndex)?.set('handlePosition', position)
-  }, 'setModuleHandlePosition')
+    const module = getYModule(doc, columnIndex, moduleIndex)
+    module?.set('handlePosition', vertical)
+    module?.set('handleHorizontalPosition', horizontal)
+  }, 'setModuleHandlePlacement')
 }
 
 export function setModuleHandleOrientation(doc: Y.Doc, columnIndex: number, moduleIndex: number, orientation: HandleOrientation) {

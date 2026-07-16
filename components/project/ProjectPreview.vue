@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { horizontalHandleStyle, pairedDoorHorizontalStyle } from '~~/components/project/handle-2d-layout'
 import { DEFAULT_FURNITURE_CONFIG, normalizePublicStyle } from '~~/shared/domain/defaults'
 import { HANDLE_FINISH_SPECS, moduleHasHandleHoles, moduleShowsPhysicalHandle, resolveHandleCenter, resolveHandleType } from '~~/shared/domain/handles'
 import type { FurnitureColumn, FurnitureConfig, FurnitureModule, PublicStyle } from '~~/shared/domain/types'
@@ -126,33 +127,24 @@ function doorHandleBottom(mod: FurnitureModule, handleHeight: number): string {
   return `${center * PX_PER_M - handleHeight / 2}px`
 }
 
-function singleDoorPullStyle(mod: FurnitureModule, hinge: 'left' | 'right'): Record<string, string> {
+function singleDoorPullStyle(mod: FurnitureModule): Record<string, string> {
   const { width, height } = handleDimensions(mod)
-  const inset = pullEdgeInsetPx()
-  const horizontal: Record<string, string> = hinge === 'left'
-    ? { right: `${inset - width / 2}px` }
-    : { left: `${inset - width / 2}px` }
   return {
     width: `${width}px`,
     height: `${height}px`,
     bottom: doorHandleBottom(mod, height),
-    ...horizontal,
+    ...horizontalHandleStyle(mod, width, pullEdgeInsetPx()),
     ...handleVisualStyle(mod),
   }
 }
 
 function doorsPullStyle(mod: FurnitureModule, side: 'left' | 'right'): Record<string, string> {
   const { width, height } = handleDimensions(mod)
-  const halfGap = pullPairHalfGapPx()
-  const isHorizontalBar = resolveHandleType(mod, handleStyle.value) === 'bar' && handleOrientation(mod) === 'horizontal'
-  const left = isHorizontalBar
-    ? side === 'left' ? `calc(25% - ${width / 2}px)` : `calc(75% - ${width / 2}px)`
-    : `calc(50% + ${(side === 'left' ? -halfGap : halfGap) - width / 2}px)`
   return {
     width: `${width}px`,
     height: `${height}px`,
     bottom: doorHandleBottom(mod, height),
-    left,
+    ...pairedDoorHorizontalStyle(mod, side, width, pullEdgeInsetPx(), pullPairHalfGapPx()),
     ...handleVisualStyle(mod),
   }
 }
@@ -179,37 +171,33 @@ function drawerHandleStyle(mod: FurnitureModule, drawerIndex: number): Record<st
   const centreM = resolveHandleCenter(minCentre, maxCentre, mod.handlePosition)
   const pct = (centreM / mod.height) * 100
   const { width, height } = handleDimensions(mod)
+  const horizontalReserve = handleOrientation(mod) === 'horizontal' ? pullPairHalfGapPx() : 0
   return {
     width: `${width}px`,
     height: `${height}px`,
-    left: `calc(50% - ${width / 2}px)`,
+    ...horizontalHandleStyle(mod, width, pullEdgeInsetPx() + horizontalReserve),
     bottom: `calc(${pct}% - ${height / 2}px)`,
     ...handleVisualStyle(mod),
   }
 }
 
-function singleDoorHoleStyle(mod: FurnitureModule, hinge: 'left' | 'right'): Record<string, string> {
+function singleDoorHoleStyle(mod: FurnitureModule): Record<string, string> {
   const diameter = pullDiameterPx()
-  const inset = pullEdgeInsetPx()
-  const horizontal: Record<string, string> = hinge === 'left'
-    ? { right: `${inset - diameter / 2}px` }
-    : { left: `${inset - diameter / 2}px` }
   return {
     width: `${diameter}px`,
     height: `${diameter}px`,
     bottom: doorHandleBottom(mod, diameter),
-    ...horizontal,
+    ...horizontalHandleStyle(mod, diameter, pullEdgeInsetPx()),
   }
 }
 
 function doorsHoleStyle(mod: FurnitureModule, side: 'left' | 'right'): Record<string, string> {
   const diameter = pullDiameterPx()
-  const halfGap = pullPairHalfGapPx()
   return {
     width: `${diameter}px`,
     height: `${diameter}px`,
     bottom: doorHandleBottom(mod, diameter),
-    left: `calc(50% + ${(side === 'left' ? -halfGap : halfGap) - diameter / 2}px)`,
+    ...pairedDoorHorizontalStyle(mod, side, diameter, pullEdgeInsetPx(), pullPairHalfGapPx()),
   }
 }
 
@@ -226,10 +214,11 @@ function drawerHoleStyle(mod: FurnitureModule, drawerIndex: number, holeIndex: n
   const offset = holeIndex === 1 ? -pullPairHalfGapPx() : pullPairHalfGapPx()
   const xOffset = orientation === 'horizontal' ? offset : 0
   const yOffset = orientation === 'vertical' ? offset : 0
+  const horizontalReserve = orientation === 'horizontal' ? pullPairHalfGapPx() : 0
   return {
     width: `${diameter}px`,
     height: `${diameter}px`,
-    left: `calc(50% + ${xOffset - diameter / 2}px)`,
+    ...horizontalHandleStyle(mod, diameter, pullEdgeInsetPx() + horizontalReserve, xOffset),
     bottom: `calc(${(centreM / mod.height) * 100}% + ${yOffset - diameter / 2}px)`,
   }
 }
@@ -321,12 +310,12 @@ function moduleClass(mod: FurnitureModule): string {
                       v-if="moduleShowsPhysicalHandle(mod)"
                       class="absolute"
                       :class="handleClass(mod)"
-                      :style="singleDoorPullStyle(mod, 'left')"
+                      :style="singleDoorPullStyle(mod)"
                     />
                     <div
                       v-else-if="moduleHasHandleHoles(mod)"
                       class="pull-hole-2d absolute rounded-full"
-                      :style="singleDoorHoleStyle(mod, 'left')"
+                      :style="singleDoorHoleStyle(mod)"
                     />
                   </template>
 
@@ -335,12 +324,12 @@ function moduleClass(mod: FurnitureModule): string {
                       v-if="moduleShowsPhysicalHandle(mod)"
                       class="absolute"
                       :class="handleClass(mod)"
-                      :style="singleDoorPullStyle(mod, 'right')"
+                      :style="singleDoorPullStyle(mod)"
                     />
                     <div
                       v-else-if="moduleHasHandleHoles(mod)"
                       class="pull-hole-2d absolute rounded-full"
-                      :style="singleDoorHoleStyle(mod, 'right')"
+                      :style="singleDoorHoleStyle(mod)"
                     />
                   </template>
 
